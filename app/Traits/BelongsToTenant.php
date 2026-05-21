@@ -15,6 +15,6 @@ trait BelongsToTenant
 
     public function scopeForTenant($query, $tenantId = null)
     {
-        return $query->where('tenant_id', $tenantId ?? auth()->user()->tenant_id);
+        return $query->where($this->getTable() . '.tenant_id', $tenantId ?? auth()->user()->tenant_id);
     }
 }

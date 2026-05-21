@@ -20,8 +20,12 @@ use App\Http\Controllers\Api\{
 
 // ─── PUBLIC ──────────────────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
-    Route::post('login',    [AuthController::class, 'login']);
-    Route::post('register', [AuthController::class, 'register']);
+    Route::post('login',           [AuthController::class, 'login']);
+    Route::post('register',        [AuthController::class, 'register']);
+    Route::post('verify-otp',      [AuthController::class, 'verifyOtp']);
+    Route::post('resend-otp',      [AuthController::class, 'resendOtp']);
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('reset-password',  [AuthController::class, 'resetPassword']);
 });
 
 // ─── AUTHENTICATED ───────────────────────────────────────────────────
@@ -62,6 +66,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
 
     // Produk
     Route::get('products/low-stock', [ProductController::class, 'lowStock']);
+    Route::get('products/search-by-code', [ProductController::class, 'searchByBarcodeOrSku']);
     Route::apiResource('products', ProductController::class);
 
     // Stok

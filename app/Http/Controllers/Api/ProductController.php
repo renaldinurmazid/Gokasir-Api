@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends BaseApiController
@@ -15,16 +16,14 @@ class ProductController extends BaseApiController
             ->with('category', 'unit')
             ->when(
                 $request->search,
-                fn($q) =>
-                $q->where(
-                    fn($q2) =>
-                    $q2->where('name', 'like', "%{$request->search}%")
+                fn ($q) => $q->where(
+                    fn ($q2) => $q2->where('name', 'like', "%{$request->search}%")
                         ->orWhere('sku', 'like', "%{$request->search}%")
                         ->orWhere('barcode', 'like', "%{$request->search}%")
                 )
             )
-            ->when($request->category_id, fn($q) => $q->where('category_id', $request->category_id))
-            ->when($request->filled('is_active'), fn($q) => $q->where('is_active', $request->is_active))
+            ->when($request->category_id, fn ($q) => $q->where('category_id', $request->category_id))
+            ->when($request->filled('is_active'), fn ($q) => $q->where('is_active', $request->is_active))
             ->paginate(20);
 
         return $this->ok($products);
@@ -34,15 +33,15 @@ class ProductController extends BaseApiController
     public function store(Request $request)
     {
         $request->validate([
-            'name'          => 'required|string|max:150',
+            'name' => 'required|string|max:150',
             'selling_price' => 'required|numeric|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
-            'category_id'   => 'nullable|exists:categories,id',
-            'unit_id'       => 'nullable|exists:units,id',
-            'sku'           => 'nullable|string|max:100',
-            'barcode'       => 'nullable|string|max:100',
-            'min_stock'     => 'nullable|integer|min:0',
-            'image'         => 'nullable|image|max:2048',
+            'category_id' => 'nullable|exists:categories,id',
+            'unit_id' => 'nullable|exists:units,id',
+            'sku' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:100',
+            'min_stock' => 'nullable|integer|min:0',
+            'image' => 'nullable|image|max:2048',
         ]);
 
         $data = $request->only(
@@ -72,6 +71,7 @@ class ProductController extends BaseApiController
     public function show(Product $product)
     {
         abort_if($product->tenant_id !== $this->tenantId(), 403);
+
         return $this->ok($product->load('category', 'unit', 'stocks.store'));
     }
 
@@ -81,15 +81,15 @@ class ProductController extends BaseApiController
         abort_if($product->tenant_id !== $this->tenantId(), 403);
 
         $request->validate([
-            'name'          => 'required|string|max:150',
+            'name' => 'required|string|max:150',
             'selling_price' => 'required|numeric|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
-            'category_id'   => 'nullable|exists:categories,id',
-            'unit_id'       => 'nullable|exists:units,id',
-            'sku'           => 'nullable|string|max:100',
-            'barcode'       => 'nullable|string|max:100',
-            'min_stock'     => 'nullable|integer|min:0',
-            'image'         => 'nullable|image|max:2048',
+            'category_id' => 'nullable|exists:categories,id',
+            'unit_id' => 'nullable|exists:units,id',
+            'sku' => 'nullable|string|max:100',
+            'barcode' => 'nullable|string|max:100',
+            'min_stock' => 'nullable|integer|min:0',
+            'image' => 'nullable|image|max:2048',
         ]);
 
         $data = $request->only(
@@ -127,6 +127,7 @@ class ProductController extends BaseApiController
         }
 
         $product->delete();
+
         return $this->ok(null, 'Produk dihapus.');
     }
 
@@ -144,5 +145,29 @@ class ProductController extends BaseApiController
             ->get();
 
         return $this->ok($products);
+    }
+
+    // GET /api/products/search-by-code?code=
+    public function searchByBarcodeOrSku(Request $request)
+    {
+        $request->validate([
+            'code' => 'required|string',
+        ]);
+
+        $code = $request->input('code');
+
+        $product = Product::forTenant()
+            ->where(function ($query) use ($code) {
+                $query->where('barcode', $code)
+                    ->orWhere('sku', $code);
+            })
+            ->with(['category', 'unit', 'stocks.store'])
+            ->first();
+
+        if (! $product) {
+            return $this->fail('Produk tidak ditemukan.', 404);
+        }
+
+        return $this->ok($product);
     }
 }
