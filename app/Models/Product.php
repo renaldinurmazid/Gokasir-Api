@@ -65,6 +65,9 @@ class Product extends Model
     public function getPhotoUrlAttribute()
     {
         if ($this->image) {
+            if (filter_var($this->image, FILTER_VALIDATE_URL)) {
+                return $this->image;
+            }
             return asset('storage/' . $this->image);
         }
         return null;
