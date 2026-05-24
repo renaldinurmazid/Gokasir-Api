@@ -9,6 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use App\Jobs\SendMessageWhatsAppJobs;
+use Illuminate\Support\Facades\Http;
+
 
 class AuthController extends BaseApiController
 {
@@ -66,6 +68,26 @@ class AuthController extends BaseApiController
 
             // Dispatch WhatsApp Job
             dispatch(new SendMessageWhatsAppJobs("Kode verifikasi GoKasir Anda adalah: {$otp}. Berlaku selama 5 menit.", $user->phone));
+
+            // Send Telegram Notification
+            try {
+                $text = "📢 *Pendaftaran Baru GoKasir*\n\n"
+                    . "🏢 *Nama Bisnis:* " . $tenant->business_name . "\n"
+                    . "💼 *Tipe Bisnis:* " . ($tenant->business_type ?? '-') . "\n"
+                    . "👤 *Nama Owner:* " . $user->name . "\n"
+                    . "📞 *No. HP:* " . $user->phone . "\n"
+                    . "✉️ *Email:* " . ($user->email ?? '-') . "\n"
+                    . "🏪 *Nama Toko:* " . ($store->name ?? '-') . "\n"
+                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s');
+
+                Http::post("https://api.telegram.org/bot7219922547:AAEIoouX8l9ANKh-Rw54OHoZY05qxQLQlYY/sendMessage", [
+                    'chat_id' => '-4698105870',
+                    'text'    => $text,
+                    'parse_mode' => 'Markdown',
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Failed to send Telegram notification: " . $e->getMessage());
+            }
 
             return $this->ok([
                 'phone' => $user->phone,
