@@ -95,4 +95,19 @@ class Product extends Model
         }
         return $this->stocks()->where('store_id', $storeId)->first()?->qty ?? 0;
     }
+
+    public function suppliers()
+    {
+        return $this->belongsToMany(Supplier::class, 'product_suppliers')
+            ->withPivot('purchase_price', 'supplier_sku', 'min_order_qty', 'is_preferred')
+            ->withTimestamps();
+    }
+
+    public function preferredSupplier(int $storeId): ?Supplier
+    {
+        return $this->suppliers()
+            ->wherePivot('store_id', $storeId)
+            ->wherePivot('is_preferred', true)
+            ->first();
+    }
 }

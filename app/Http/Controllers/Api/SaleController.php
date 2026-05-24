@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Jobs\SendMessageWhatsAppJobs;
+use App\Jobs\SendTelegramMessageJobs;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Stock;
@@ -39,6 +41,23 @@ class SaleController extends BaseApiController
         $tenant = auth()->user()->tenant;
 
         if (!$tenant->hasToken()) {
+            $ownerPhone = $tenant->users()->where('role', 'owner')->value('phone');
+            if ($ownerPhone) {
+                dispatch(new SendMessageWhatsAppJobs(
+                    "⚠️ Peringatan GoKasir!\nSaldo token *{$tenant->business_name}* tidak mencukupi. Kasir *" . auth()->user()->name . "* gagal melakukan transaksi. Segera top up token agar transaksi bisa dilanjutkan.",
+                    $ownerPhone
+                ));
+            }
+
+            dispatch(new SendTelegramMessageJobs(
+                "⚠️ *Token Habis - Transaksi Gagal*\n\n"
+                    . "🏢 *Bisnis:* " . $tenant->business_name . "\n"
+                    . "👤 *Kasir:* " . auth()->user()->name . "\n"
+                    . "📞 *No. HP Kasir:* " . auth()->user()->phone . "\n"
+                    . "🏪 *Store ID:* " . $request->store_id . "\n"
+                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+            ));
+
             return $this->fail(
                 'Saldo token habis. Silakan topup token untuk melanjutkan transaksi.',
                 402

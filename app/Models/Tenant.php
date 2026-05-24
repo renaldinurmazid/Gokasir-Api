@@ -21,6 +21,11 @@ class Tenant extends Model
         'token_balance',
         'token_lifetime_used',
         'token_lifetime_topup',
+        'harga_token',
+    ];
+
+    protected $casts = [
+        'harga_token' => 'float',
     ];
 
     public function stores()
@@ -89,5 +94,27 @@ class Tenant extends Model
             'token_lifetime_topup' => \DB::raw("token_lifetime_topup + {$amount}"),
         ]);
         $this->refresh();
+    }
+
+    /**
+     * Ambil harga token efektif untuk tenant ini.
+     * Jika harga_token > 0, pakai harga mitra.
+     * Jika tidak, fallback ke harga master dari token_pricing.
+     */
+    public function getEffectiveTokenPrice(\App\Models\TokenPricing $pricing): float
+    {
+        if ($this->harga_token > 0) {
+            return (float) $this->harga_token;
+        }
+
+        return (float) $pricing->price; // harga master
+    }
+
+    /**
+     * Apakah tenant ini punya harga negosiasi?
+     */
+    public function hasMitraPrice(): bool
+    {
+        return $this->harga_token > 0;
     }
 }

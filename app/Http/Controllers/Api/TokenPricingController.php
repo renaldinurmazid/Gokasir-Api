@@ -10,14 +10,24 @@ class TokenPricingController extends BaseApiController
     // GET /api/token-pricing
     public function index()
     {
+        $tenant  = auth()->user()->tenant;
         $pricing = TokenPricing::active()
             ->orderBy('sort_order')
-            ->orderBy('type')
             ->get()
-            ->map(fn($p) => array_merge($p->toArray(), [
-                'total_token'      => $p->total_token,
-                'price_per_token'  => $p->price_per_token,
-            ]));
+            ->map(function ($p) use ($tenant) {
+                $effectivePrice = $p->type === 'unit'
+                    ? $tenant->getEffectiveTokenPrice($p)
+                    : (float) $p->price;  // paket tidak berubah
+
+                return array_merge($p->toArray(), [
+                    'total_token'      => $p->total_token,
+                    'effective_price'  => $effectivePrice,
+                    'is_mitra_price'   => $tenant->hasMitraPrice() && $p->type === 'unit',
+                    'price_per_token'  => $p->total_token > 0
+                        ? round($effectivePrice / $p->total_token, 2)
+                        : 0,
+                ]);
+            });
 
         return $this->ok($pricing);
     }

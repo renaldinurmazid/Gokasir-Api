@@ -28,7 +28,7 @@ class TokenPricingSeeder extends Seeder
             [
                 'type'         => 'package',
                 'name'         => 'Paket Hemat 500K',
-                'description'  => 'Beli 5.000 token + bonus 500 token gratis',
+                'description'  => 'Beli Web Admin Analisis Bisnis + Bonus 500 token gratis',
                 'price'        => 500000.00,
                 'token_amount' => 5000,
                 'token_bonus'  => 500,

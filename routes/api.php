@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\{
     AuthController,
     StoreController,
@@ -22,6 +23,10 @@ use App\Http\Controllers\Api\{
     TokenTopupController,
     TokenLogController,
     WebhookController,
+    SupplierController,
+    PurchaseController,
+    PurchaseReturnController,
+    PayableController,
 };
 
 // ─── PUBLIC ──────────────────────────────────────────────────────────
@@ -104,6 +109,39 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::post('receivables/{receivable}/pay', [ReceivableController::class, 'pay']);
     Route::post('receivables/overdue-check',    [ReceivableController::class, 'markOverdue']);
 
+    // ── Supplier ─────────────────────────────────────────────────────
+    Route::prefix('suppliers')->group(function () {
+        Route::get('/',                              [SupplierController::class, 'index']);
+        Route::post('/',                             [SupplierController::class, 'store']);
+        Route::get('/{supplier}',                    [SupplierController::class, 'show']);
+        Route::put('/{supplier}',                    [SupplierController::class, 'update']);
+        Route::delete('/{supplier}',                 [SupplierController::class, 'destroy']);
+        Route::get('/{supplier}/history',            [SupplierController::class, 'history']);
+        Route::post('/{supplier}/products',          [SupplierController::class, 'attachProduct']);
+        Route::delete('/{supplier}/products/{productId}', [SupplierController::class, 'detachProduct']);
+    });
+
+    // ── Pembelian ─────────────────────────────────────────────────────
+    Route::prefix('purchases')->group(function () {
+        Route::get('/',             [PurchaseController::class, 'index']);
+        Route::post('/',            [PurchaseController::class, 'store']);
+        Route::get('/{purchase}',   [PurchaseController::class, 'show']);
+    });
+
+    // ── Retur Pembelian ───────────────────────────────────────────────
+    Route::prefix('purchase-returns')->group(function () {
+        Route::get('/',  [PurchaseReturnController::class, 'index']);
+        Route::post('/', [PurchaseReturnController::class, 'store']);
+    });
+
+    // ── Hutang ke Supplier (Payable) ──────────────────────────────────
+    Route::prefix('payables')->group(function () {
+        Route::get('/',                       [PayableController::class, 'index']);
+        Route::get('/{payable}',              [PayableController::class, 'show']);
+        Route::post('/{payable}/pay',         [PayableController::class, 'pay']);
+        Route::post('/overdue-check',         [PayableController::class, 'markOverdue']);
+    });
+
     // Pengeluaran
     Route::get('expense-categories',        [ExpenseController::class, 'categories']);
     Route::post('expense-categories',       [ExpenseController::class, 'storeCategory']);
@@ -142,6 +180,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::post('token-pricing',                 [TokenPricingController::class, 'store']);
         Route::put('token-pricing/{tokenPricing}',    [TokenPricingController::class, 'update']);
         Route::delete('token-pricing/{tokenPricing}', [TokenPricingController::class, 'destroy']);
+        Route::put('tenants/{tenant}/token-price',    [AdminTenantController::class, 'setMitraTokenPrice']);
     });
 
 });

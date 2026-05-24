@@ -46,15 +46,21 @@ class TokenTopupController extends BaseApiController
         ]);
 
         $pricing = TokenPricing::active()->findOrFail($request->pricing_id);
+        $tenant  = auth()->user()->tenant;
+
+        // ── Hitung harga efektif ──────────────────────────────────────────
+        $hargaPerToken = $tenant->getEffectiveTokenPrice($pricing);
 
         if ($pricing->type === 'unit') {
             $qty         = $request->qty ?? 1;
             $tokenAmount = $pricing->token_amount * $qty;
-            $totalPrice  = $pricing->price * $qty;
+            $totalPrice  = $hargaPerToken * $qty;          // ← pakai harga efektif
         } else {
+            // Paket: harga paket tidak terpengaruh harga mitra
+            // (paket sudah punya harga bundel tersendiri)
             $qty         = 1;
             $tokenAmount = $pricing->total_token;
-            $totalPrice  = $pricing->price;
+            $totalPrice  = $pricing->price;               // ← tetap pakai harga paket
         }
 
         $orderNumber = 'TKN-' . strtoupper(Str::random(4)) . '-' . time();

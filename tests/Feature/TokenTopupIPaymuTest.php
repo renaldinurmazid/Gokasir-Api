@@ -259,4 +259,69 @@ class TokenTopupIPaymuTest extends TestCase
         $response->assertStatus(403)
             ->assertJsonPath('status', 'invalid_signature');
     }
+
+    public function test_mitra_custom_token_pricing_calculation()
+    {
+        // 1. Set custom mitra price for tenant
+        $this->tenant->update(['harga_token' => 50.00]);
+
+        Sanctum::actingAs($this->owner);
+
+        // 2. Pricing index should reflect custom price for unit pricing
+        $pricingResponse = $this->getJson('/api/token-pricing');
+        $pricingResponse->assertStatus(200)
+            ->assertJsonPath('data.0.effective_price', 50)
+            ->assertJsonPath('data.0.is_mitra_price', true)
+            ->assertJsonPath('data.1.effective_price', 500000)
+            ->assertJsonPath('data.1.is_mitra_price', false);
+
+        // 3. Fake iPaymu API redirect response
+        Http::fake([
+            '*/payment' => Http::response([
+                'Status' => 200,
+                'Message' => 'success',
+                'Data' => [
+                    'SessionID' => 'mitra-trx-123',
+                    'Url' => 'https://sandbox.ipaymu.com/payment/mitra-trx-123',
+                ]
+            ], 200)
+        ]);
+
+        // 4. Create unit checkout with qty 10 (total: 10 * 50 = 500)
+        $topupPayload = [
+            'pricing_id' => $this->pricingUnit->id,
+            'qty' => 10,
+        ];
+
+        $topupResponse = $this->postJson('/api/token-topups', $topupPayload);
+        $topupResponse->assertStatus(201)
+            ->assertJsonPath('data.price', '500.00')
+            ->assertJsonPath('data.token_amount', 10);
+    }
+
+    public function test_admin_set_mitra_token_price()
+    {
+        Sanctum::actingAs($this->owner);
+
+        $response = $this->putJson("/api/admin/tenants/{$this->tenant->id}/token-price", [
+            'harga_token' => 75.00,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.harga_token', 75)
+            ->assertJsonPath('data.is_mitra', true);
+
+        $this->assertEquals(75.00, $this->tenant->fresh()->harga_token);
+
+        // Revoke / set to 0
+        $revokeResponse = $this->putJson("/api/admin/tenants/{$this->tenant->id}/token-price", [
+            'harga_token' => 0.00,
+        ]);
+
+        $revokeResponse->assertStatus(200)
+            ->assertJsonPath('data.harga_token', 0)
+            ->assertJsonPath('data.is_mitra', false);
+
+        $this->assertEquals(0.00, $this->tenant->fresh()->harga_token);
+    }
 }
