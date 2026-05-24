@@ -22,33 +22,33 @@ class AuthController extends BaseApiController
     public function businessTypes()
     {
         $types = [
-            [ 'value' => 'retail', 'label' => 'Retail / Toko Umum' ],
-            [ 'value' => 'grocery', 'label' => 'Toko Sembako / Grocery' ],
-            [ 'value' => 'minimarket', 'label' => 'Minimarket' ],
-            [ 'value' => 'fashion', 'label' => 'Fashion / Pakaian' ],
-            [ 'value' => 'food_beverage', 'label' => 'Makanan & Minuman' ],
-            [ 'value' => 'restaurant', 'label' => 'Restoran' ],
-            [ 'value' => 'cafe', 'label' => 'Cafe / Coffee Shop' ],
-            [ 'value' => 'bakery', 'label' => 'Bakery / Roti & Kue' ],
-            [ 'value' => 'pharmacy', 'label' => 'Apotek' ],
-            [ 'value' => 'beauty', 'label' => 'Beauty / Kosmetik' ],
-            [ 'value' => 'barbershop', 'label' => 'Barbershop / Salon' ],
-            [ 'value' => 'laundry', 'label' => 'Laundry' ],
-            [ 'value' => 'electronics', 'label' => 'Elektronik & Gadget' ],
-            [ 'value' => 'computer_store', 'label' => 'Komputer & Aksesoris' ],
-            [ 'value' => 'phone_store', 'label' => 'Counter HP / Pulsa' ],
-            [ 'value' => 'automotive', 'label' => 'Otomotif / Bengkel' ],
-            [ 'value' => 'hardware', 'label' => 'Bangunan / Material' ],
-            [ 'value' => 'pet_shop', 'label' => 'Pet Shop' ],
-            [ 'value' => 'book_store', 'label' => 'Toko Buku / ATK' ],
-            [ 'value' => 'furniture', 'label' => 'Furniture' ],
-            [ 'value' => 'health', 'label' => 'Kesehatan' ],
-            [ 'value' => 'sports', 'label' => 'Olahraga' ],
-            [ 'value' => 'jewelry', 'label' => 'Perhiasan' ],
-            [ 'value' => 'wholesale', 'label' => 'Grosir' ],
-            [ 'value' => 'service', 'label' => 'Jasa / Service' ],
-            [ 'value' => 'online_shop', 'label' => 'Online Shop' ],
-            [ 'value' => 'other', 'label' => 'Lainnya' ]
+            ['value' => 'retail', 'label' => 'Retail / Toko Umum'],
+            ['value' => 'grocery', 'label' => 'Toko Sembako / Grocery'],
+            ['value' => 'minimarket', 'label' => 'Minimarket'],
+            ['value' => 'fashion', 'label' => 'Fashion / Pakaian'],
+            ['value' => 'food_beverage', 'label' => 'Makanan & Minuman'],
+            ['value' => 'restaurant', 'label' => 'Restoran'],
+            ['value' => 'cafe', 'label' => 'Cafe / Coffee Shop'],
+            ['value' => 'bakery', 'label' => 'Bakery / Roti & Kue'],
+            ['value' => 'pharmacy', 'label' => 'Apotek'],
+            ['value' => 'beauty', 'label' => 'Beauty / Kosmetik'],
+            ['value' => 'barbershop', 'label' => 'Barbershop / Salon'],
+            ['value' => 'laundry', 'label' => 'Laundry'],
+            ['value' => 'electronics', 'label' => 'Elektronik & Gadget'],
+            ['value' => 'computer_store', 'label' => 'Komputer & Aksesoris'],
+            ['value' => 'phone_store', 'label' => 'Counter HP / Pulsa'],
+            ['value' => 'automotive', 'label' => 'Otomotif / Bengkel'],
+            ['value' => 'hardware', 'label' => 'Bangunan / Material'],
+            ['value' => 'pet_shop', 'label' => 'Pet Shop'],
+            ['value' => 'book_store', 'label' => 'Toko Buku / ATK'],
+            ['value' => 'furniture', 'label' => 'Furniture'],
+            ['value' => 'health', 'label' => 'Kesehatan'],
+            ['value' => 'sports', 'label' => 'Olahraga'],
+            ['value' => 'jewelry', 'label' => 'Perhiasan'],
+            ['value' => 'wholesale', 'label' => 'Grosir'],
+            ['value' => 'service', 'label' => 'Jasa / Service'],
+            ['value' => 'online_shop', 'label' => 'Online Shop'],
+            ['value' => 'other', 'label' => 'Lainnya']
         ];
 
         return $this->ok($types, 'Business types list retrieved successfully.');
@@ -155,29 +155,28 @@ class AuthController extends BaseApiController
             dispatch(new SendMessageWhatsAppJobs("Kode verifikasi GoKasir Anda adalah: {$otp}. Berlaku selama 5 menit.", $user->phone));
 
             // Send Telegram Notification
-            try {
-                $text = "📢 *Pendaftaran Baru GoKasir*\n\n"
-                    . "🏢 *Nama Bisnis:* " . $tenant->business_name . "\n"
-                    . "💼 *Tipe Bisnis:* " . ($tenant->business_type ?? '-') . "\n"
-                    . "👤 *Nama Owner:* " . $user->name . "\n"
-                    . "📞 *No. HP:* " . $user->phone . "\n"
-                    . "✉️ *Email:* " . ($user->email ?? '-') . "\n"
-                    . "🏪 *Nama Toko:* " . ($store->name ?? '-') . "\n"
-                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s');
+            // try {
+            //     $text = "📢 *Pendaftaran Baru GoKasir*\n\n"
+            //         . "🏢 *Nama Bisnis:* " . $tenant->business_name . "\n"
+            //         . "💼 *Tipe Bisnis:* " . ($tenant->business_type ?? '-') . "\n"
+            //         . "👤 *Nama Owner:* " . $user->name . "\n"
+            //         . "📞 *No. HP:* " . $user->phone . "\n"
+            //         . "✉️ *Email:* " . ($user->email ?? '-') . "\n"
+            //         . "🏪 *Nama Toko:* " . ($store->name ?? '-') . "\n"
+            //         . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s');
 
-                Http::post("https://api.telegram.org/bot7219922547:AAEIoouX8l9ANKh-Rw54OHoZY05qxQLQlYY/sendMessage", [
-                    'chat_id' => '-4698105870',
-                    'text'    => $text,
-                    'parse_mode' => 'Markdown',
-                ]);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error("Failed to send Telegram notification: " . $e->getMessage());
-            }
+            //     Http::post("https://api.telegram.org/bot7219922547:AAEIoouX8l9ANKh-Rw54OHoZY05qxQLQlYY/sendMessage", [
+            //         'chat_id' => '-4698105870',
+            //         'text'    => $text,
+            //         'parse_mode' => 'Markdown',
+            //     ]);
+            // } catch (\Exception $e) {
+            //     \Illuminate\Support\Facades\Log::error("Failed to send Telegram notification: " . $e->getMessage());
+            // }
 
             return $this->ok([
                 'phone' => $user->phone,
             ], 'Registrasi berhasil. Silakan periksa WhatsApp Anda untuk kode verifikasi (OTP).', 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->fail('Gagal melakukan registrasi: ' . $e->getMessage(), 500);
@@ -1135,4 +1134,3 @@ class AuthController extends BaseApiController
         }
     }
 }
- 

@@ -8,12 +8,15 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Receivable;
 use App\Models\Customer;
+use App\Services\TokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SaleController extends BaseApiController
 {
+    public function __construct(protected TokenService $tokenService) {}
+
     // GET /api/sales
     public function index(Request $request)
     {
@@ -32,6 +35,17 @@ class SaleController extends BaseApiController
     // POST /api/sales
     public function store(Request $request)
     {
+        // ── PENGECEKAN TOKEN ──────────────────────────────────────────
+        $tenant = auth()->user()->tenant;
+
+        if (!$tenant->hasToken()) {
+            return $this->fail(
+                'Saldo token habis. Silakan topup token untuk melanjutkan transaksi.',
+                402
+            );
+        }
+        // ─────────────────────────────────────────────────────────────
+
         $request->validate([
             'store_id'       => 'required|exists:stores,id',
             'customer_id'    => 'nullable|exists:customers,id',
@@ -48,15 +62,30 @@ class SaleController extends BaseApiController
 
         DB::beginTransaction();
         try {
-            // Hitung total
+            // Hitung total dengan setting pajak
+            $taxSetting = $tenant->getActiveTaxSetting();
+
             $subtotal = 0;
             foreach ($request->items as $item) {
                 $disc     = $item['discount'] ?? 0;
                 $subtotal += ($item['price'] * $item['qty']) - $disc;
             }
             $discount    = $request->discount_amount ?? 0;
-            $tax         = $request->tax_amount ?? 0;
-            $grandTotal  = $subtotal - $discount + $tax;
+            $afterDisc   = $subtotal - $discount;
+
+            $tax = 0;
+            if ($taxSetting->tax_enabled) {
+                if ($taxSetting->tax_inclusive) {
+                    $tax = round($afterDisc - ($afterDisc / (1 + ($taxSetting->tax_rate / 100))), 2);
+                    $grandTotal = $afterDisc;
+                } else {
+                    $tax = round($afterDisc * ($taxSetting->tax_rate / 100), 2);
+                    $grandTotal = $afterDisc + $tax;
+                }
+            } else {
+                $grandTotal = $afterDisc;
+            }
+
             $paidAmount  = $request->paid_amount;
             $change      = max(0, $paidAmount - $grandTotal);
             $payStatus   = $paidAmount >= $grandTotal ? 'paid' : ($paidAmount > 0 ? 'partial' : 'unpaid');
@@ -65,7 +94,7 @@ class SaleController extends BaseApiController
                 $payStatus = 'unpaid';
             }
 
-            $invoiceNumber = 'INV-' . date('Ymd') . '-' . strtoupper(uniqid());
+            $invoiceNumber = 'INV-' . date('Ymd') . '-' . rand(10000, 99999);
 
             $sale = Sale::create([
                 'tenant_id'      => $this->tenantId(),
@@ -124,6 +153,20 @@ class SaleController extends BaseApiController
                 ]);
             }
 
+            // ── POTONG TOKEN (setelah sale berhasil dibuat) ───────────
+            $tokenDeducted = $this->tokenService->deductForSale(
+                $tenant,
+                $sale->id,
+                $request->store_id,
+                auth()->id()
+            );
+
+            if (!$tokenDeducted) {
+                DB::rollBack();
+                return $this->fail('Saldo token tidak mencukupi.', 402);
+            }
+            // ─────────────────────────────────────────────────────────
+
             // Buat piutang jika tempo/partial/unpaid
             if (in_array($payStatus, ['unpaid', 'partial']) && $request->customer_id) {
                 $remaining = $grandTotal - $paidAmount;
@@ -145,7 +188,15 @@ class SaleController extends BaseApiController
             }
 
             DB::commit();
-            return $this->ok($sale->load('items.product', 'customer', 'cashier', 'store'), 'Transaksi berhasil.', 201);
+
+            return $this->ok(
+                array_merge(
+                    $sale->load('items.product', 'customer', 'cashier', 'store')->toArray(),
+                    ['token_balance_remaining' => $tenant->fresh()->token_balance]
+                ),
+                'Transaksi berhasil.',
+                201
+            );
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->fail('Transaksi gagal: ' . $e->getMessage(), 500);
@@ -165,7 +216,7 @@ class SaleController extends BaseApiController
 
         $totalRevenue      = (clone $salesQuery)->sum('grand_total');
         $totalTransactions = (clone $salesQuery)->count();
-        
+
         $saleIds           = (clone $salesQuery)->pluck('id');
         $totalProductsSold = SaleItem::whereIn('sale_id', $saleIds)->sum('qty');
 

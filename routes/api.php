@@ -17,10 +17,16 @@ use App\Http\Controllers\Api\{
     ExpenseController,
     ReportController,
     TenantController,
+    TaxSettingController,
+    TokenPricingController,
+    TokenTopupController,
+    TokenLogController,
+    WebhookController,
 };
 
 // ─── PUBLIC ──────────────────────────────────────────────────────────
 Route::get('business-types',   [AuthController::class, 'businessTypes']);
+Route::post('webhooks/ipaymu', [WebhookController::class, 'ipaymu']);
 
 Route::prefix('auth')->group(function () {
     Route::post('login',           [AuthController::class, 'login']);
@@ -115,6 +121,27 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::get('stock-value',          [ReportController::class, 'stockValue']);
         Route::get('cashier-performance',  [ReportController::class, 'cashierPerformance']);
         Route::get('expense-by-category',  [ReportController::class, 'expenseByCategory']);
+    });
+
+    // Tax Settings
+    Route::get('tax-settings', [TaxSettingController::class, 'show']);
+    Route::middleware('owner')->put('tax-settings', [TaxSettingController::class, 'update']);
+
+    // Token Pricing, Logs, Balance
+    Route::get('token-pricing', [TokenPricingController::class, 'index']);
+    Route::get('token-balance', [TokenTopupController::class, 'balance']);
+    Route::get('token-logs',    [TokenLogController::class, 'index']);
+
+    // Token Topups
+    Route::get('token-topups',                       [TokenTopupController::class, 'index']);
+    Route::post('token-topups',                      [TokenTopupController::class, 'store']);
+    Route::get('token-topups/{orderNumber}/check',   [TokenTopupController::class, 'checkStatus']);
+
+    // Admin Token Pricing (owner only)
+    Route::middleware('owner')->prefix('admin')->group(function () {
+        Route::post('token-pricing',                 [TokenPricingController::class, 'store']);
+        Route::put('token-pricing/{tokenPricing}',    [TokenPricingController::class, 'update']);
+        Route::delete('token-pricing/{tokenPricing}', [TokenPricingController::class, 'destroy']);
     });
 
 });

@@ -140,5 +140,7 @@ class DatabaseSeeder extends Seeder
             'product_id' => $p3->id,
             'qty' => 80.00,
         ]);
+
+        $this->call(TokenPricingSeeder::class);
     }
 }
