@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\{
     AuthController,
     StoreController,
     UserController,
+    CashierController,
     CategoryController,
     UnitController,
     ProductController,
@@ -58,6 +59,9 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::post('users',          [UserController::class, 'store']);
         Route::put('users/{user}',    [UserController::class, 'update']);
         Route::delete('users/{user}', [UserController::class, 'destroy']);
+
+        // Dedicated Cashier API
+        Route::apiResource('cashiers', CashierController::class);
     });
 
     // Kategori & Satuan Produk
