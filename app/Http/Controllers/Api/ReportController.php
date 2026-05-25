@@ -144,10 +144,10 @@ class ReportController extends BaseApiController
     // GET /api/reports/cashier-performance?store_id=&from=&to=
     public function cashierPerformance(Request $request)
     {
-        $data = Sale::where('tenant_id', $this->tenantId())
-            ->when($request->store_id, fn($q) => $q->where('store_id', $request->store_id))
-            ->when($request->from, fn($q) => $q->whereDate('transaction_date', '>=', $request->from))
-            ->when($request->to,   fn($q) => $q->whereDate('transaction_date', '<=', $request->to))
+        $data = Sale::where('sales.tenant_id', $this->tenantId())
+            ->when($request->store_id, fn($q) => $q->where('sales.store_id', $request->store_id))
+            ->when($request->from, fn($q) => $q->whereDate('sales.transaction_date', '>=', $request->from))
+            ->when($request->to,   fn($q) => $q->whereDate('sales.transaction_date', '<=', $request->to))
             ->join('users', 'sales.cashier_id', '=', 'users.id')
             ->select(
                 'users.id',

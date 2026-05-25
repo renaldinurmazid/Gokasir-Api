@@ -129,6 +129,22 @@ class TokenTopupController extends BaseApiController
     {
         try {
             $channels = $this->ipaymu->getPaymentChannels();
+
+            $filterCategories = function ($categories) {
+                return array_values(array_filter($categories, function ($cat) {
+                    $code = strtolower($cat['Code'] ?? $cat['code'] ?? '');
+                    return $code === 'va' || $code === 'qris';
+                }));
+            };
+
+            if (isset($channels['Data']) && is_array($channels['Data'])) {
+                $channels['Data'] = $filterCategories($channels['Data']);
+            } elseif (isset($channels['data']) && is_array($channels['data'])) {
+                $channels['data'] = $filterCategories($channels['data']);
+            } elseif (is_array($channels)) {
+                $channels = $filterCategories($channels);
+            }
+
             return $this->ok($channels);
         } catch (\Exception $e) {
             return $this->fail('Gagal mengambil daftar metode pembayaran: ' . $e->getMessage(), 500);
