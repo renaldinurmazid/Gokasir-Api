@@ -25,26 +25,32 @@ class IPaymuService
     /**
      * Buat transaksi pembayaran baru di iPaymu.
      */
+    /**
+     * Buat transaksi pembayaran baru di iPaymu menggunakan Direct API.
+     */
     public function createPayment(array $params): array
     {
         $body = [
-            'product'     => [$params['description']],
-            'qty'         => [1],
-            'price'       => [$params['amount']],
-            'returnUrl'   => $params['return_url'],
-            'notifyUrl'   => $params['notify_url'],
-            'cancelUrl'   => $params['cancel_url'],
-            'referenceId' => $params['order_number'],
-            'buyerName'   => $params['buyer_name'],
-            'buyerEmail'  => $params['buyer_email'],
-            'buyerPhone'  => $params['buyer_phone'],
+            'name'           => $params['buyer_name'],
+            'phone'          => $params['buyer_phone'],
+            'email'          => $params['buyer_email'],
+            'amount'         => $params['amount'],
+            'notifyUrl'      => $params['notify_url'],
+            'expired'        => '24',
+            'expiredType'    => 'hours',
+            'referenceId'    => $params['order_number'],
+            'paymentMethod'  => $params['payment_method'],
+            'paymentChannel' => $params['payment_channel'],
+            'product'        => [$params['description']],
+            'qty'            => [1],
+            'price'          => [$params['amount']],
         ];
 
         $bodyString = json_encode($body, JSON_UNESCAPED_SLASHES);
 
         $response = Http::withHeaders($this->buildHeaders($body, $bodyString))
             ->withBody($bodyString, 'application/json')
-            ->post($this->baseUrl . '/payment');
+            ->post($this->baseUrl . '/payment/direct');
 
         $data = $response->json();
 
@@ -56,11 +62,7 @@ class IPaymuService
             );
         }
 
-        return [
-            'trx_id'       => $data['Data']['SessionID'] ?? $data['Data']['TransactionId'] ?? null,
-            'reference_id' => $params['order_number'],
-            'url'          => $data['Data']['Url'] ?? null,
-        ];
+        return $data;
     }
 
     /**
@@ -81,15 +83,39 @@ class IPaymuService
     }
 
     /**
+     * Get list of available payment channels.
+     */
+    public function getPaymentChannels(): array
+    {
+        // For GET requests, iPaymu expects signature built with "{}" as request body and GET as HTTP method
+        $headers = $this->buildHeaders([], '{}', 'GET');
+
+        $response = Http::withHeaders($headers)
+            ->get($this->baseUrl . '/payment-channels');
+
+        $data = $response->json();
+
+        Log::channel('ipaymu')->info('Get payment channels response', $data ?: []);
+
+        if (!$response->successful() || ($data['Status'] ?? null) != 200) {
+            throw new \RuntimeException(
+                'iPaymu error: ' . ($data['Message'] ?? 'Unknown error')
+            );
+        }
+
+        return $data ?: [];
+    }
+
+    /**
      * Build Authorization header iPaymu.
      */
-    private function buildHeaders(array $body, ?string $bodyString = null): array
+    private function buildHeaders(array $body, ?string $bodyString = null, string $method = 'POST'): array
     {
         $bodyString = $bodyString ?? json_encode($body, JSON_UNESCAPED_SLASHES);
         $bodyHash   = strtolower(hash('sha256', $bodyString));
         $timestamp  = now()->format('YmdHis');
         
-        $stringToSign = "POST:" . $this->va . ":" . $bodyHash . ":" . $this->apiKey;
+        $stringToSign = strtoupper($method) . ":" . $this->va . ":" . $bodyHash . ":" . $this->apiKey;
         $signature  = hash_hmac('sha256', $stringToSign, $this->apiKey);
 
         return [

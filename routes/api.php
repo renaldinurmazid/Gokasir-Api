@@ -173,6 +173,8 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     // Token Topups
     Route::get('token-topups',                       [TokenTopupController::class, 'index']);
     Route::post('token-topups',                      [TokenTopupController::class, 'store']);
+    Route::get('token-topups/payment-channels',      [TokenTopupController::class, 'paymentChannels']);
+    Route::get('payment-methods',                    [TokenTopupController::class, 'paymentChannels']);
     Route::get('token-topups/{orderNumber}/check',   [TokenTopupController::class, 'checkStatus']);
 
     // Admin Token Pricing (owner only)

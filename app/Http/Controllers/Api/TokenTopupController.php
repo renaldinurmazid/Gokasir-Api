@@ -41,8 +41,8 @@ class TokenTopupController extends BaseApiController
         $request->validate([
             'pricing_id'      => 'required|exists:token_pricing,id',
             'qty'             => 'nullable|integer|min:1|max:100000',
-            'payment_method'  => 'nullable|string',
-            'payment_channel' => 'nullable|string',
+            'payment_method'  => 'required|string',
+            'payment_channel' => 'required|string',
         ]);
 
         $pricing = TokenPricing::active()->findOrFail($request->pricing_id);
@@ -81,21 +81,27 @@ class TokenTopupController extends BaseApiController
 
         try {
             $ipaymuResponse = $this->ipaymu->createPayment([
-                'order_number'   => $orderNumber,
-                'amount'         => (int) $totalPrice,
-                'buyer_name'     => auth()->user()->name,
-                'buyer_email'    => auth()->user()->email,
-                'buyer_phone'    => auth()->user()->phone ?? '-',
-                'description'    => "Topup {$tokenAmount} Token GoKasir",
-                'notify_url'     => config('app.url') . '/api/webhooks/ipaymu',
-                'return_url'     => config('app.url') . '/topup/success',
-                'cancel_url'     => config('app.url') . '/topup/cancel',
+                'order_number'    => $orderNumber,
+                'amount'          => (int) $totalPrice,
+                'payment_method'  => $topup->payment_method,
+                'payment_channel' => $topup->payment_channel,
+                'buyer_name'      => auth()->user()->name,
+                'buyer_email'     => auth()->user()->email,
+                'buyer_phone'     => auth()->user()->phone ?? '-',
+                'description'     => "Topup {$tokenAmount} Token GoKasir",
+                'notify_url'      => config('app.url') . '/api/webhooks/ipaymu',
             ]);
 
+            $responseData = $ipaymuResponse['Data'] ?? [];
+
             $topup->update([
-                'ipaymu_trx_id'       => $ipaymuResponse['trx_id'] ?? null,
-                'ipaymu_reference'    => $ipaymuResponse['reference_id'] ?? null,
-                'payment_url'         => $ipaymuResponse['url'] ?? null,
+                'ipaymu_trx_id'       => $responseData['TransactionId'] ?? null,
+                'ipaymu_reference'    => $responseData['ReferenceId'] ?? null,
+                'payment_no'          => $responseData['PaymentNo'] ?? null,
+                'payment_name'        => $responseData['PaymentName'] ?? null,
+                'payment_fee'         => 0,
+                'payment_url'         => $responseData['QrImage'] ?? $responseData['QrTemplate'] ?? $responseData['PaymentNo'] ?? null,
+                'expired_at'          => isset($responseData['Expired']) ? \Carbon\Carbon::parse($responseData['Expired']) : now()->addHours(24),
                 'ipaymu_raw_response' => json_encode($ipaymuResponse),
             ]);
         } catch (\Exception $e) {
@@ -104,15 +110,29 @@ class TokenTopupController extends BaseApiController
         }
 
         return $this->ok([
-            'order_number'   => $topup->order_number,
-            'token_amount'   => $topup->token_amount,
-            'price'          => $topup->price,
-            'payment_url'    => $topup->payment_url,
-            'payment_method' => $topup->payment_method,
+            'order_number'    => $topup->order_number,
+            'token_amount'    => $topup->token_amount,
+            'price'           => $topup->price,
+            'payment_no'      => $topup->payment_no,
+            'payment_name'    => $topup->payment_name,
+            'payment_fee'     => 0,
+            'payment_url'     => $topup->payment_url,
+            'payment_method'  => $topup->payment_method,
             'payment_channel' => $topup->payment_channel,
-            'expired_at'     => $topup->expired_at,
-            'status'         => $topup->status,
+            'expired_at'      => $topup->expired_at,
+            'status'          => $topup->status,
         ], 'Order topup dibuat. Lanjutkan pembayaran.', 201);
+    }
+
+    // GET /api/token-topups/payment-channels
+    public function paymentChannels()
+    {
+        try {
+            $channels = $this->ipaymu->getPaymentChannels();
+            return $this->ok($channels);
+        } catch (\Exception $e) {
+            return $this->fail('Gagal mengambil daftar metode pembayaran: ' . $e->getMessage(), 500);
+        }
     }
 
     // GET /api/token-topups/{orderNumber}/check

@@ -12,16 +12,18 @@ class TokenTopup extends Model
         'tenant_id', 'user_id', 'pricing_id',
         'order_number', 'token_amount', 'price', 'qty',
         'ipaymu_trx_id', 'ipaymu_reference',
-        'payment_method', 'payment_channel', 'payment_url',
+        'payment_method', 'payment_channel', 'payment_no',
+        'payment_name', 'payment_fee', 'payment_url',
         'ipaymu_raw_response', 'status',
         'paid_at', 'expired_at',
         'balance_before', 'balance_after',
     ];
 
     protected $casts = [
-        'paid_at'    => 'datetime',
-        'expired_at' => 'datetime',
-        'price'      => 'decimal:2',
+        'paid_at'     => 'datetime',
+        'expired_at'  => 'datetime',
+        'price'       => 'decimal:2',
+        'payment_fee' => 'decimal:2',
     ];
 
     public function tenant()
