@@ -30,33 +30,10 @@ class IPaymuService
      */
     public function createPayment(array $params): array
     {
-        // Sanitize and normalize buyer's name
-        $name = trim($params['buyer_name'] ?? '');
-        if (strlen($name) < 3 || in_array(strtolower($name), ['-', 'asd', 'abc', 'test', 'testing', 'null', 'customer', 'pelanggan'])) {
-            $name = 'Pelanggan Meja';
-        }
-
-        // Sanitize and normalize buyer's phone number
-        $phone = preg_replace('/[^0-9]/', '', $params['buyer_phone'] ?? '');
-        // iPaymu expects a valid Indonesian mobile format (9-14 digits, typically starting with 08 or 628)
-        if (strlen($phone) < 9 || strlen($phone) > 15 || in_array($phone, ['000000000', '123456789', '1234567890', '12345678'])) {
-            $phone = '081234567890'; // Secure valid mobile phone fallback
-        } else {
-            if (!str_starts_with($phone, '0') && !str_starts_with($phone, '62')) {
-                $phone = '08' . $phone;
-            }
-        }
-
-        // Sanitize and normalize buyer's email
-        $email = trim($params['buyer_email'] ?? '');
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $email = 'customer@gokasir.id';
-        }
-
         $body = [
-            'name'           => $name,
-            'phone'          => $phone,
-            'email'          => $email,
+            'name'           => $params['buyer_name'],
+            'phone'          => $params['buyer_phone'],
+            'email'          => $params['buyer_email'],
             'amount'         => $params['amount'],
             'notifyUrl'      => $params['notify_url'],
             'expired'        => '24',
