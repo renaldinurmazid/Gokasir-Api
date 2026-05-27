@@ -5,11 +5,12 @@ namespace App\Events;
 use App\Models\TableOrder;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NewTableOrder implements ShouldBroadcastNow
+class NewTableOrder implements ShouldBroadcast
 // ShouldBroadcastNow = langsung broadcast tanpa queue
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
