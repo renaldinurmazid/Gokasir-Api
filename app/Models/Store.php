@@ -12,12 +12,14 @@ class Store extends Model
 
     protected $appends = [
         'logo_url',
+        'banner_url',
     ];
 
     protected $fillable = [
         'tenant_id',
         'name',
         'logo',
+        'banner',
         'address',
         'city',
         'province',
@@ -27,6 +29,13 @@ class Store extends Model
         'receipt_footer',
     ];
 
+    public function getBannerUrlAttribute()
+    {
+        if ($this->banner) {
+            return asset('storage/' . $this->banner);
+        }
+        return null;
+    }
     public function getLogoUrlAttribute()
     {
         if ($this->logo) {

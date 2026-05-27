@@ -27,11 +27,24 @@ use App\Http\Controllers\Api\{
     PurchaseController,
     PurchaseReturnController,
     PayableController,
+    TableController,
+    PublicOrderController,
+    TableOrderController,
 };
 
 // ─── PUBLIC ──────────────────────────────────────────────────────────
 Route::get('business-types',   [AuthController::class, 'businessTypes']);
 Route::post('webhooks/ipaymu', [WebhookController::class, 'ipaymu']);
+Route::post('webhooks/ipaymu-order', [WebhookController::class, 'ipaymuOrder']);
+
+Route::prefix('public')->group(function () {
+    Route::get('menu/{tableCode}',                   [PublicOrderController::class, 'menu']);
+    Route::post('order/{tableCode}/session',          [PublicOrderController::class, 'startSession']);
+    Route::post('order/{tableCode}/place',            [PublicOrderController::class, 'placeOrder']);
+    Route::get('order/{tableCode}/status/{orderNumber}', [PublicOrderController::class, 'orderStatus']);
+    Route::get('order/{tableCode}/history',           [PublicOrderController::class, 'orderHistory']);
+    Route::get('payment-methods',                    [PublicOrderController::class, 'paymentMethods']);
+});
 
 Route::prefix('auth')->group(function () {
     Route::post('login',           [AuthController::class, 'login']);
@@ -176,6 +189,25 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('token-topups/payment-channels',      [TokenTopupController::class, 'paymentChannels']);
     Route::get('payment-methods',                    [TokenTopupController::class, 'paymentChannels']);
     Route::get('token-topups/{orderNumber}/check',   [TokenTopupController::class, 'checkStatus']);
+
+    // Dining Tables (Tables)
+    Route::get('tables', [TableController::class, 'index']);
+    Route::get('tables/{table}', [TableController::class, 'show']);
+    Route::get('tables/{table}/orders', [TableController::class, 'activeOrders']);
+
+    Route::middleware('owner')->group(function () {
+        Route::post('tables', [TableController::class, 'store']);
+        Route::put('tables/{table}', [TableController::class, 'update']);
+        Route::delete('tables/{table}', [TableController::class, 'destroy']);
+        Route::post('tables/{table}/regenerate-qr', [TableController::class, 'regenerateQr']);
+    });
+
+    // Table Orders
+    Route::get('table-orders/pending', [TableOrderController::class, 'pending']);
+    Route::apiResource('table-orders', TableOrderController::class)->only(['index', 'show', 'update']);
+    Route::post('table-orders/{tableOrder}/confirm', [TableOrderController::class, 'confirm']);
+    Route::post('table-orders/{tableOrder}/cancel', [TableOrderController::class, 'cancel']);
+    Route::post('table-orders/{tableOrder}/process-payment', [TableOrderController::class, 'processPayment']);
 
     // Admin Token Pricing (owner only)
     Route::middleware('owner')->prefix('admin')->group(function () {

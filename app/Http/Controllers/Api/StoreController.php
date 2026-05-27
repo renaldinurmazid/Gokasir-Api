@@ -24,13 +24,18 @@ class StoreController extends BaseApiController
             'email' => 'nullable|email|max:100',
             'city'  => 'nullable|string|max:100',
             'logo'  => 'nullable|image|max:2048',
+            'banner' => 'nullable|image|max:2048',
         ]);
 
-        $data = $request->only('name','address','city','province','postal_code','phone','email','receipt_footer');
+        $data = $request->only('name', 'address', 'city', 'province', 'postal_code', 'phone', 'email', 'receipt_footer');
         $data['tenant_id'] = $this->tenantId();
 
         if ($request->hasFile('logo')) {
             $data['logo'] = $request->file('logo')->store('stores', 'public');
+        }
+
+        if ($request->hasFile('banner')) {
+            $data['banner'] = $request->file('banner')->store('stores', 'public');
         }
 
         $store = Store::create($data);
@@ -49,22 +54,30 @@ class StoreController extends BaseApiController
     public function update(Request $request, Store $store)
     {
         $this->authorizeStore($store);
-        
+
         $request->validate([
             'name'  => 'required|string|max:100',
             'phone' => 'nullable|string|max:30',
             'email' => 'nullable|email|max:100',
             'city'  => 'nullable|string|max:100',
             'logo'  => 'nullable|image|max:2048',
+            'banner'  => 'nullable|image|max:2048',
         ]);
 
-        $data = $request->only('name','address','city','province','postal_code','phone','email','receipt_footer');
+        $data = $request->only('name', 'address', 'city', 'province', 'postal_code', 'phone', 'email', 'receipt_footer', 'banner');
 
         if ($request->hasFile('logo')) {
             if ($store->logo) {
                 Storage::disk('public')->delete($store->logo);
             }
             $data['logo'] = $request->file('logo')->store('stores', 'public');
+        }
+
+        if ($request->hasFile('banner')) {
+            if ($store->banner) {
+                Storage::disk('public')->delete($store->banner);
+            }
+            $data['banner'] = $request->file('banner')->store('stores', 'public');
         }
 
         $store->update($data);
