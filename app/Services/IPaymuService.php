@@ -82,8 +82,6 @@ class IPaymuService
                 'nominal'       => $params['amount'] ?? 0,
                 'status'        => 'BARU',
                 'created_date'  => now(),
-                'created_at'    => now(),
-                'updated_at'    => now(),
             ]);
         } catch (\Exception $e) {
             Log::channel('ipaymu')->error('Gagal menyimpan log ipaymu_data: ' . $e->getMessage());
@@ -111,8 +109,12 @@ class IPaymuService
             $data = $request->post() ?: [];
         }
 
-        // 2. Pisahkan signature yang diterima
-        $receivedSig = $data['signature'] ?? $request->header('signature') ?? $request->input('signature') ?? '';
+        // 2. Pisahkan signature yang diterima (iPaymu callbacks send signature in x-signature header)
+        $receivedSig = $data['signature'] 
+            ?? $request->header('x-signature') 
+            ?? $request->header('signature') 
+            ?? $request->input('signature') 
+            ?? '';
 
         if (empty($receivedSig)) {
             Log::channel('ipaymu')->warning('verifySignature failed: No signature found in payload or header', [
