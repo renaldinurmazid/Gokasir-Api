@@ -114,7 +114,7 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
     Route::get('sales/today-overview', [SaleController::class, 'todayOverview']);
     Route::get('sales',       [SaleController::class, 'index']);
     Route::post('sales',      [SaleController::class, 'store']);
-    Route::get('sales/{sale}',[SaleController::class, 'show']);
+    Route::get('sales/{sale}', [SaleController::class, 'show']);
 
     // Piutang
     Route::get('receivables',                   [ReceivableController::class, 'index']);
@@ -216,5 +216,4 @@ Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
         Route::delete('token-pricing/{tokenPricing}', [TokenPricingController::class, 'destroy']);
         Route::put('tenants/{tenant}/token-price',    [AdminTenantController::class, 'setMitraTokenPrice']);
     });
-
 });

@@ -170,6 +170,7 @@ class PublicOrderController extends BaseApiController
 
             // Update status sesi
             $session->update(['status' => 'ordered']);
+            event(new \App\Events\NewTableOrder($order->load('table', 'items.product')));
 
             // Jika cashless → buat transaksi dengan iPaymu Direct API
             if ($request->payment_type === 'cashless') {
