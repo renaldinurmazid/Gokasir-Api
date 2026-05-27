@@ -62,6 +62,33 @@ class IPaymuService
             );
         }
 
+        try {
+            $resData = $data['Data'] ?? [];
+            \Illuminate\Support\Facades\DB::table('ipaymu_data')->insert([
+                'sessionId'     => $resData['SessionId'] ?? null,
+                'TransactionId' => $resData['TransactionId'] ?? null,
+                'Fee'           => $resData['Fee'] ?? 0,
+                'Expired'       => $resData['Expired'] ?? null,
+                'PaymentNo'     => $resData['PaymentNo'] ?? null,
+                'PaymentName'   => $resData['PaymentName'] ?? null,
+                'Total'         => $resData['Total'] ?? 0,
+                'Via'           => $resData['Via'] ?? null,
+                'Channel'       => $resData['Channel'] ?? null,
+                'nama'          => $params['buyer_name'] ?? null,
+                'tenants_id'    => $params['tenant_id'] ?? null,
+                'email'         => $params['buyer_email'] ?? null,
+                'phone'         => $params['buyer_phone'] ?? null,
+                'jumlah'        => $params['amount'] ?? 0,
+                'nominal'       => $params['amount'] ?? 0,
+                'status'        => 'BARU',
+                'created_date'  => now(),
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('ipaymu')->error('Gagal menyimpan log ipaymu_data: ' . $e->getMessage());
+        }
+
         return $data;
     }
 
@@ -75,7 +102,7 @@ class IPaymuService
 
         $bodyString   = $request->getContent();
         $bodyHash     = strtolower(hash('sha256', $bodyString));
-        
+
         $stringToSign = "POST:" . $this->va . ":" . $bodyHash . ":" . $this->apiKey;
         $expectedSig  = hash_hmac('sha256', $stringToSign, $this->apiKey);
 
@@ -114,7 +141,7 @@ class IPaymuService
         $bodyString = $bodyString ?? json_encode($body, JSON_UNESCAPED_SLASHES);
         $bodyHash   = strtolower(hash('sha256', $bodyString));
         $timestamp  = now()->format('YmdHis');
-        
+
         $stringToSign = strtoupper($method) . ":" . $this->va . ":" . $bodyHash . ":" . $this->apiKey;
         $signature  = hash_hmac('sha256', $stringToSign, $this->apiKey);
 

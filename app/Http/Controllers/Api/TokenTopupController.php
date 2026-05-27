@@ -79,15 +79,20 @@ class TokenTopupController extends BaseApiController
             'expired_at'     => now()->addHours(24),
         ]);
 
+        $buyerPhone = auth()->user()->phone ?? '081284725661';
+        $buyerPhone = preg_replace('/[^0-9+]/', '', $buyerPhone);
+        $buyerPhone = preg_replace('/^(?:\+62|0)/', '62', $buyerPhone);
+
         try {
             $ipaymuResponse = $this->ipaymu->createPayment([
+                'tenant_id'       => $this->tenantId(),
                 'order_number'    => $orderNumber,
                 'amount'          => (int) $totalPrice,
                 'payment_method'  => $topup->payment_method,
                 'payment_channel' => $topup->payment_channel,
                 'buyer_name'      => auth()->user()->name,
-                'buyer_email'     => auth()->user()->email,
-                'buyer_phone'     => auth()->user()->phone ?? '-',
+                'buyer_email'     => auth()->user()->email ?? 'customer@gokasir.net',
+                'buyer_phone'     => $buyerPhone,
                 'description'     => "Topup {$tokenAmount} Token GoKasir",
                 'notify_url'      => config('app.url') . '/api/webhooks/ipaymu',
             ]);
