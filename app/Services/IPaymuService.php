@@ -97,16 +97,58 @@ class IPaymuService
      */
     public function verifySignature(\Illuminate\Http\Request $request): bool
     {
-        $receivedSig  = $request->header('signature') ?? $request->input('signature');
-        if (!$receivedSig) return false;
+        if (empty($this->va)) {
+            Log::channel('ipaymu')->error('verifySignature failed: iPaymu VA is not configured.', [
+                'va' => $this->va,
+            ]);
+            return false;
+        }
 
-        $bodyString   = $request->getContent();
-        $bodyHash     = strtolower(hash('sha256', $bodyString));
+        // 1. Ambil Data Masuk (Mendukung JSON atau Form-Data sesuai setting dashboard/dokumentasi)
+        $input = $request->getContent();
+        $data  = json_decode($input, true);
+        if (!is_array($data)) {
+            $data = $request->post() ?: [];
+        }
 
-        $stringToSign = "POST:" . $this->va . ":" . $bodyHash . ":" . $this->apiKey;
-        $expectedSig  = hash_hmac('sha256', $stringToSign, $this->apiKey);
+        // 2. Pisahkan signature yang diterima
+        $receivedSig = $data['signature'] ?? $request->header('signature') ?? $request->input('signature') ?? '';
 
-        return hash_equals(strtolower($expectedSig), strtolower($receivedSig));
+        if (empty($receivedSig)) {
+            Log::channel('ipaymu')->warning('verifySignature failed: No signature found in payload or header', [
+                'headers' => $request->headers->all(),
+                'payload' => $data,
+            ]);
+            return false;
+        }
+
+        // Hapus parameter signature dari data yang diterima
+        unset($data['signature']);
+
+        // 3. Urutkan data berdasarkan kunci (key) secara ascending (ksort)
+        ksort($data);
+
+        // 4. Konversi data yang sudah diurutkan menjadi string JSON
+        $jsonBody = json_encode($data);
+
+        // 5. Generate hash HMAC-SHA256 menggunakan string JSON tersebut dan Secret Key (VA) Anda
+        $calculatedSig = hash_hmac('sha256', $jsonBody, $this->va);
+
+        // 6. Bandingkan
+        $isMatched = hash_equals(strtolower($calculatedSig), strtolower($receivedSig));
+
+        if (!$isMatched) {
+            Log::channel('ipaymu')->warning('verifySignature failed: Signature mismatch', [
+                'received_signature'   => $receivedSig,
+                'calculated_signature' => $calculatedSig,
+                'va_secret'            => $this->va,
+                'json_body'            => $jsonBody,
+                'payload_after_unset'  => $data,
+                'headers'              => $request->headers->all(),
+            ]);
+        }
+
+        return $isMatched;
     }
 
     /**

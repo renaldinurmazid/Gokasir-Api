@@ -104,7 +104,7 @@ class TokenTopupIPaymuTest extends TestCase
 
         // Fake the HTTP response of iPaymu api
         Http::fake([
-            '*/payment' => Http::response([
+            '*/payment/*' => Http::response([
                 'Status' => 200,
                 'Message' => 'Success',
                 'Data' => [
@@ -146,7 +146,7 @@ class TokenTopupIPaymuTest extends TestCase
 
         // Fake the HTTP response of iPaymu api
         Http::fake([
-            '*/payment' => Http::response([
+            '*/payment/*' => Http::response([
                 'Status' => 200,
                 'Message' => 'Success',
                 'Data' => [
@@ -209,17 +209,15 @@ class TokenTopupIPaymuTest extends TestCase
             'channel' => 'mpm',
         ];
 
-        $bodyString = json_encode($payload);
+        // 3. Compute expected signature using official callback signature logic
+        $dataForSig = $payload;
+        ksort($dataForSig);
+        $jsonBody = json_encode($dataForSig);
+        $expectedSignature = hash_hmac('sha256', $jsonBody, $this->va);
 
-        // 3. Compute expected signature using new HMAC-SHA256 formula
-        $bodyHash = strtolower(hash('sha256', $bodyString));
-        $stringToSign = "POST:" . $this->va . ":" . $bodyHash . ":" . $this->apiKey;
-        $expectedSignature = hash_hmac('sha256', $stringToSign, $this->apiKey);
-
-        // 4. Send webhook with correct signature
-        $response = $this->postJson('/api/webhooks/ipaymu', $payload, [
-            'Signature' => $expectedSignature,
-        ]);
+        // 4. Send webhook with correct signature in payload
+        $payloadWithSig = array_merge($payload, ['signature' => $expectedSignature]);
+        $response = $this->postJson('/api/webhooks/ipaymu', $payloadWithSig);
 
         $response->assertStatus(200)
             ->assertJsonPath('status', 'ok');
@@ -277,7 +275,7 @@ class TokenTopupIPaymuTest extends TestCase
 
         // 3. Fake iPaymu API redirect response
         Http::fake([
-            '*/payment' => Http::response([
+            '*/payment/*' => Http::response([
                 'Status' => 200,
                 'Message' => 'success',
                 'Data' => [
@@ -291,6 +289,8 @@ class TokenTopupIPaymuTest extends TestCase
         $topupPayload = [
             'pricing_id' => $this->pricingUnit->id,
             'qty' => 10,
+            'payment_method' => 'qris',
+            'payment_channel' => 'qris',
         ];
 
         $topupResponse = $this->postJson('/api/token-topups', $topupPayload);

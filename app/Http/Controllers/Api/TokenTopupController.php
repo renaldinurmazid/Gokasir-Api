@@ -105,7 +105,7 @@ class TokenTopupController extends BaseApiController
                 'payment_no'          => $responseData['PaymentNo'] ?? null,
                 'payment_name'        => $responseData['PaymentName'] ?? null,
                 'payment_fee'         => 0,
-                'payment_url'         => $responseData['QrImage'] ?? $responseData['QrTemplate'] ?? $responseData['PaymentNo'] ?? null,
+                'payment_url'         => $responseData['Url'] ?? $responseData['QrImage'] ?? $responseData['QrTemplate'] ?? $responseData['PaymentNo'] ?? null,
                 'expired_at'          => isset($responseData['Expired']) ? \Carbon\Carbon::parse($responseData['Expired']) : now()->addHours(24),
                 'ipaymu_raw_response' => json_encode($ipaymuResponse),
             ]);
