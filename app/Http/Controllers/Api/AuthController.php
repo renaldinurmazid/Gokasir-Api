@@ -186,7 +186,9 @@ class AuthController extends BaseApiController
             'password' => 'required',
         ]);
 
-        $user = User::where('phone', $request->phone)->first();
+        $user = User::where('phone', $request->phone)
+            ->orWhere('email', $request->phone)
+            ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return $this->fail('Nomor telepon atau password salah.', 401);
