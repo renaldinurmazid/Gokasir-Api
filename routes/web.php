@@ -20,8 +20,8 @@ Route::get('order/{tableCode}/cancel/{orderNumber}', [OrderController::class, 'c
 Route::get('order/{tableCode}/{category}', [OrderController::class, 'showCategory'])->name('web-order.category');
 
 Route::get('/profile/{tableCode}', function ($tableCode) {
-    return view('pages.profile.index', ['tableCode' => $tableCode]);
+    return Inertia::render('Profile/Index', ['tableCode' => $tableCode]);
 });
 Route::get('/profile/{tableCode}/privacy', function ($tableCode) {
-    return view('pages.profile.privacy', ['tableCode' => $tableCode]);
+    return Inertia::render('Profile/Privacy', ['tableCode' => $tableCode]);
 });

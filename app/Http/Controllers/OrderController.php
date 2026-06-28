@@ -7,6 +7,7 @@ use App\Models\TableOrder;
 use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class OrderController extends Controller
 {
@@ -26,9 +27,18 @@ class OrderController extends Controller
             ->whereHas('products', function ($query) {
                 $query->where('is_active', true);
             })
+            ->with(['products' => function ($query) {
+                $query->where('is_active', true);
+            }])
             ->get();
 
-        return view('pages.orders.index', [
+        // Append photo_url explicitly
+        $recommendedProducts->each->append('photo_url');
+        $categories->each(function($category) {
+            $category->products->each->append('photo_url');
+        });
+
+        return Inertia::render('Orders/Index', [
             'tableCode'           => $tableCode,
             'table'               => $table,
             'recommendedProducts' => $recommendedProducts,
@@ -54,7 +64,9 @@ class OrderController extends Controller
             $products = collect();
         }
 
-        return view('pages.orders.search', [
+        $products->each->append('photo_url');
+
+        return Inertia::render('Orders/Search', [
             'tableCode'   => $tableCode,
             'table'       => $table,
             'products'    => $products,
@@ -77,7 +89,9 @@ class OrderController extends Controller
             ->where('is_active', true)
             ->get();
 
-        return view('pages.orders.show-category', [
+        $products->each->append('photo_url');
+
+        return Inertia::render('Orders/ShowCategory', [
             'tableCode' => $tableCode,
             'table'     => $table,
             'category'  => $category,
@@ -92,7 +106,7 @@ class OrderController extends Controller
             ->with(['store.tenant.taxSetting'])
             ->firstOrFail();
 
-        return view('pages.orders.checkout', [
+        return Inertia::render('Orders/Checkout', [
             'tableCode' => $tableCode,
             'table'     => $table,
         ]);
@@ -108,7 +122,13 @@ class OrderController extends Controller
             ->with('items.product')
             ->firstOrFail();
 
-        return view('pages.orders.status', [
+        $order->items->each(function($item) {
+            if ($item->product) {
+                $item->product->append('photo_url');
+            }
+        });
+
+        return Inertia::render('Orders/Status', [
             'tableCode'   => $tableCode,
             'table'       => $table,
             'orderNumber' => $orderNumber,
@@ -128,7 +148,7 @@ class OrderController extends Controller
             ->with('store')
             ->firstOrFail();
 
-        return view('pages.orders.history', [
+        return Inertia::render('Orders/History', [
             'tableCode' => $tableCode,
             'table'     => $table,
         ]);

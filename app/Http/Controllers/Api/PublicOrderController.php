@@ -303,25 +303,37 @@ class PublicOrderController extends BaseApiController
     public function orderHistory(Request $request, string $tableCode)
     {
         $sessionToken = $request->query('session_token');
+        $orderNumbers = $request->query('order_numbers', []);
 
-        if (!$sessionToken) {
-            return $this->fail('Session token wajib disertakan.', 400);
+        if (!$sessionToken && empty($orderNumbers)) {
+            return $this->fail('Parameter tidak lengkap.', 400);
         }
 
         $table = Table::where('code', $tableCode)->where('is_active', true)->firstOrFail();
 
-        $session = TableSession::where('session_token', $sessionToken)
-            ->where('table_id', $table->id)
-            ->first();
+        $query = TableOrder::where('table_id', $table->id)->with('items.product');
 
-        if (!$session) {
-            return $this->ok([], 'Sesi tidak ditemukan.');
+        if ($sessionToken && !empty($orderNumbers)) {
+            $session = TableSession::where('session_token', $sessionToken)->where('table_id', $table->id)->first();
+            if ($session) {
+                $query->where(function($q) use ($session, $orderNumbers) {
+                    $q->where('session_id', $session->id)
+                      ->orWhereIn('order_number', $orderNumbers);
+                });
+            } else {
+                $query->whereIn('order_number', $orderNumbers);
+            }
+        } elseif ($sessionToken) {
+            $session = TableSession::where('session_token', $sessionToken)->where('table_id', $table->id)->first();
+            if (!$session) {
+                return $this->ok([], 'Sesi tidak ditemukan.');
+            }
+            $query->where('session_id', $session->id);
+        } else {
+            $query->whereIn('order_number', $orderNumbers);
         }
 
-        $orders = TableOrder::where('session_id', $session->id)
-            ->with('items.product')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $orders = $query->orderBy('created_at', 'desc')->get();
 
         return $this->ok($orders->map(fn($order) => [
             'order_number'   => $order->order_number,
