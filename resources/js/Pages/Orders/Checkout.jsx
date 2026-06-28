@@ -3,12 +3,20 @@ import { Head, Link, router } from "@inertiajs/react";
 import useCart from "../../hooks/useCart";
 
 export default function Checkout({ tableCode, table }) {
-    const { cart, addToCart, updateQty, updateNote, totalQty, subtotal, clearCart } =
-        useCart(tableCode);
+    const {
+        cart,
+        addToCart,
+        updateQty,
+        updateNote,
+        totalQty,
+        subtotal,
+        clearCart,
+    } = useCart(tableCode);
     const [step, setStep] = useState(1);
 
     // Tax Calculation
-    const taxSetting = table.store.tenant?.tax_setting || table.store.tenant?.taxSetting;
+    const taxSetting =
+        table.store.tenant?.tax_setting || table.store.tenant?.taxSetting;
     const taxRate = taxSetting?.tax_enabled
         ? parseFloat(taxSetting.tax_rate || 0)
         : 0;
@@ -200,7 +208,11 @@ export default function Checkout({ tableCode, table }) {
             <div className="min-h-screen bg-gray-50 flex flex-col font-sans max-w-[480px] mx-auto relative shadow-xl items-center justify-center p-6 text-center">
                 <Head title="Keranjang Kosong" />
                 <div className="w-120 h-120 flex items-center justify-center mb-2">
-                    <img src="/illustration/cart-empty.svg" alt="Keranjang Kosong" className="w-full h-full object-contain" />
+                    <img
+                        src="/illustration/cart-empty.svg"
+                        alt="Keranjang Kosong"
+                        className="w-full h-full object-contain"
+                    />
                 </div>
                 <h3 className="font-bold text-gray-800 mb-2">
                     Keranjang Belanja Kosong
@@ -320,10 +332,15 @@ export default function Checkout({ tableCode, table }) {
                                                 <path d="M12 20h9" />
                                                 <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
                                             </svg>
-                                            <input 
+                                            <input
                                                 type="text"
-                                                value={item.note || ''}
-                                                onChange={(e) => updateNote(item.product_id, e.target.value)}
+                                                value={item.note || ""}
+                                                onChange={(e) =>
+                                                    updateNote(
+                                                        item.product_id,
+                                                        e.target.value,
+                                                    )
+                                                }
                                                 placeholder="Tambah catatan..."
                                                 className="border-none bg-transparent p-0 focus:ring-0 w-full text-[12px] italic placeholder-gray-400 text-gray-600 h-5"
                                             />
@@ -410,7 +427,9 @@ export default function Checkout({ tableCode, table }) {
                             </div>
                             {taxRate > 0 && (
                                 <div className="flex justify-between text-xs text-gray-600">
-                                    <span>{taxName} ({taxRate}%)</span>
+                                    <span>
+                                        {taxName} ({taxRate}%)
+                                    </span>
                                     <span className="font-bold text-gray-800">
                                         Rp{taxAmount.toLocaleString("id-ID")}
                                     </span>
@@ -565,13 +584,12 @@ export default function Checkout({ tableCode, table }) {
                                     viewBox="0 0 24 24"
                                     fill="none"
                                     stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    className="absolute left-3 top-3 text-gray-400"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    className="lucide lucide-table2-icon lucide-table-2 absolute left-3 top-3 text-gray-400"
                                 >
-                                    <path d="M12 2v20" />
-                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                    <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" />
                                 </svg>
                                 <input
                                     type="text"
@@ -601,16 +619,24 @@ export default function Checkout({ tableCode, table }) {
                                 }
                                 className={`flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${formData.payment_type === "cashless" ? "border-[#EF5350] bg-red-50 text-[#EF5350]" : "border-gray-200 bg-white text-gray-600"}`}
                             >
-                                <span className="text-lg leading-none">📱</span>
+                                <img
+                                    src="/illustration/wallet.svg"
+                                    alt=""
+                                    className="w-16 h-16"
+                                />
                                 <span className="text-xs font-bold">
                                     Pembayaran Online
                                 </span>
                             </button>
                             <button
                                 onClick={() => handlePaymentSelection("cash")}
-                                className={`flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${formData.payment_type === "cash" ? "border-[#EF5350] bg-red-50 text-[#EF5350]" : "border-gray-200 bg-white text-gray-600"}`}
+                                className={`flex items-center justify-center gap-2 py-1 rounded-xl border transition-all ${formData.payment_type === "cash" ? "border-[#EF5350] bg-red-50 text-[#EF5350]" : "border-gray-200 bg-white text-gray-600"}`}
                             >
-                                <span className="text-lg leading-none">💵</span>
+                                <img
+                                    src="/illustration/cashier.svg"
+                                    alt=""
+                                    className="w-16 h-16"
+                                />
                                 <span className="text-xs font-bold">
                                     Bayar di Kasir
                                 </span>
@@ -625,7 +651,13 @@ export default function Checkout({ tableCode, table }) {
                             </h3>
                             <div className="space-y-2">
                                 {paymentChannels.map((cat, catIdx) => (
-                                    <React.Fragment key={cat.Code || cat.code || `cat-${catIdx}`}>
+                                    <React.Fragment
+                                        key={
+                                            cat.Code ||
+                                            cat.code ||
+                                            `cat-${catIdx}`
+                                        }
+                                    >
                                         {(
                                             cat.Channels ||
                                             cat.channels ||
