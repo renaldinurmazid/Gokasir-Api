@@ -2,10 +2,15 @@
 
 use App\Http\Controllers\OrderController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
-    return view('welcome');
+    return Inertia::render('Welcome');
 });
+Route::get('/register', function () {
+    return Inertia::render('Register');
+});
+
 Route::get('order/{tableCode}', [OrderController::class, 'index'])->name('web-order');
 Route::get('order/{tableCode}/search', [OrderController::class, 'search'])->name('web-order.search');
 Route::get('order/{tableCode}/checkout', [OrderController::class, 'checkout'])->name('web-order.checkout');

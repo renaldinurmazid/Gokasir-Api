@@ -16,7 +16,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Styles -->
     <style>
@@ -34,7 +34,7 @@
             --border:     #E8ECF4;   /* Garis pemisah, border card */
             --r:          16px;      /* Card radius umum */
             
-            --font-main: 'Poppins', sans-serif;
+            --font-main: 'Plus Jakarta Sans', sans-serif;
         }
 
         /* Global Reset */
@@ -1645,7 +1645,7 @@
             </div>
 
             <!-- CTA Button -->
-            <a href="#harga" class="btn btn-nav">Mulai Gratis</a>
+            <a href="https://play.google.com/store/apps/details?id=com.gokasir.net" target="_blank" rel="noopener noreferrer" class="btn btn-nav">Download Aplikasi</a>
 
             <!-- Mobile Hamburger Button -->
             <button class="menu-toggle" aria-label="Toggle Menu">
@@ -1671,8 +1671,8 @@
                     <p class="hero-body">Kelola penjualan, pantau stok barang real-time, dan terima pembayaran digital QRIS dalam satu aplikasi kasir pintar. Dirancang khusus untuk wirausaha Indonesia yang ingin berkembang lebih cepat dan teratur.</p>
                     
                     <div class="hero-actions">
-                        <a href="#harga" class="btn btn-primary">Mulai Gratis 14 Hari</a>
-                        <a href="#cara-kerja" class="btn btn-ghost">Lihat Demo</a>
+                        <a href="https://play.google.com/store/apps/details?id=com.gokasir.net" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Download Aplikasi</a>
+                        <a href="#harga" class="btn btn-ghost">Lihat Harga</a>
                     </div>
 
                     <div class="hero-stats">
@@ -2040,102 +2040,58 @@
     </section>
 
     <!-- PRICING SECTION (3 tiers) -->
+    <!-- PRICING SECTION (Single Tier) -->
     <section id="harga" class="pricing-section">
         <div class="container">
             <div class="section-header fade-up">
                 <span class="tag-eyebrow">Paket Harga</span>
-                <h2 class="section-title">Investasi Terjangkau untuk Pertumbuhan Bisnis Anda</h2>
-                <p class="section-subtitle">Mulai secara gratis dan tingkatkan paket Anda seiring dengan berkembangnya bisnis Anda.</p>
+                <h2 class="section-title">Sangat Ringan, Tanpa Beban Bulanan</h2>
+                <p class="section-subtitle">Pelanggan baru langsung mendapatkan 500 token transaksi gratis untuk mulai memakai GoKasir.Net.</p>
             </div>
 
-            <div class="pricing-grid">
-                <!-- Tier 1: Starter -->
-                <div class="pricing-card fade-up delay-1">
+            <div style="max-width: 600px; margin: 0 auto;">
+                <div class="pricing-card popular fade-up delay-1">
+                    <div class="popular-badge">Paling Ringan untuk UMKM</div>
                     <div class="pricing-header">
-                        <span class="pricing-tier">Starter</span>
+                        <span class="pricing-tier">Gratis 500 Token Awal</span>
                         <div class="pricing-price">Gratis</div>
-                        <p class="section-subtitle" style="margin-top: 10px; font-size: 0.85rem;">Cocok untuk usaha perorangan yang baru dirintis.</p>
                     </div>
                     <ul class="pricing-features">
                         <li class="pricing-feature-item">
-                            <!-- Checkmark SVG -->
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E31B23" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            1 Kasir Utama
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            Gratis 500 token transaksi untuk pelanggan baru
                         </li>
                         <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E31B23" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Maksimal 50 Produk
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            1 transaksi = 1 struk = 1 token
                         </li>
-                        <li class="pricing-feature-item" style="opacity: 0.5;">
-                            Stok Penuh & Multi-gudang
+                        <li class="pricing-feature-item">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            Setelah 500 token, hanya Rp 100 / transaksi
                         </li>
-                        <li class="pricing-feature-item" style="opacity: 0.5;">
-                            Pembayaran QRIS Dinamis
+                        <li class="pricing-feature-item">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            Topup token minimal Rp 10.000
+                        </li>
+                        <li class="pricing-feature-item">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            Sangat ringan dan tidak membebani UMKM
+                        </li>
+                        <li class="pricing-feature-item">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            Laporan penjualan otomatis & dipantau online
                         </li>
                     </ul>
-                    <div class="pricing-action">
-                        <a href="#" class="btn btn-ghost" style="width: 100%;">Daftar Sekarang</a>
-                    </div>
-                </div>
 
-                <!-- Tier 2: Pro (Featured Plan) -->
-                <div class="pricing-card popular fade-up delay-2">
-                    <div class="popular-badge">Paling Populer</div>
-                    <div class="pricing-header">
-                        <span class="pricing-tier">Pro</span>
-                        <div class="pricing-price">Rp 149k<span>/bln</span></div>
-                        <p class="section-subtitle" style="margin-top: 10px; font-size: 0.85rem; color: #a5b1c2;">Sempurna untuk kedai kopi, resto, butik, dan retail.</p>
+                    <div style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 14px; margin-bottom: 28px; border: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size: 0.9rem; font-weight: 700; color: #F7C548; margin-bottom: 10px;">Contoh Perhitungan Ringan:</div>
+                        <p style="font-size: 0.9rem; color: #d1d8e0; line-height: 1.5; margin-bottom: 8px;">Jika usaha memiliki 20 transaksi per hari:</p>
+                        <p style="font-size: 0.95rem; color: #fff; font-weight: 700; margin-bottom: 8px;">20 transaksi × Rp 100 = Rp 2.000 / hari</p>
+                        <p style="font-size: 0.9rem; color: #d1d8e0; line-height: 1.6;">Dalam 30 hari sekitar <strong style="color: #fff;">Rp 60.000</strong>. Biaya mengikuti jumlah transaksi usaha Anda.</p>
                     </div>
-                    <ul class="pricing-features">
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            5 Kasir / Cabang
-                        </li>
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Katalog Produk Tanpa Batas
-                        </li>
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Manajemen Stok Penuh & Alerts
-                        </li>
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F7C548" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Integrasi QRIS Dinamis & Kartu
-                        </li>
-                    </ul>
-                    <div class="pricing-action">
-                        <a href="#" class="btn btn-primary" style="width: 100%; box-shadow: 0 8px 25px rgba(227,27,35,0.4);">Coba Gratis 14 Hari</a>
-                    </div>
-                </div>
 
-                <!-- Tier 3: Enterprise -->
-                <div class="pricing-card fade-up delay-3">
-                    <div class="pricing-header">
-                        <span class="pricing-tier">Enterprise</span>
-                        <div class="pricing-price">Rp 399k<span>/bln</span></div>
-                        <p class="section-subtitle" style="margin-top: 10px; font-size: 0.85rem;">Solusi franchise, multi-toko skala besar.</p>
-                    </div>
-                    <ul class="pricing-features">
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E31B23" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Kasir & Cabang Tanpa Batas
-                        </li>
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E31B23" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Katalog Produk Tanpa Batas
-                        </li>
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E31B23" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Integrasi API & Sistem Akuntansi
-                        </li>
-                        <li class="pricing-feature-item">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E31B23" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                            Dedicated Customer Support 24/7
-                        </li>
-                    </ul>
                     <div class="pricing-action">
-                        <a href="#" class="btn btn-ghost" style="width: 100%;">Hubungi Sales</a>
+                        <a href="https://play.google.com/store/apps/details?id=com.gokasir.net" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="width: 100%; box-shadow: 0 8px 25px rgba(227,27,35,0.4); padding: 18px; font-size: 1.05rem;">Mulai Sekarang - Gratis 500 Token</a>
                     </div>
                 </div>
             </div>
@@ -2155,8 +2111,8 @@
                     <h2 class="cta-title">Siap Meningkatkan Omzet Bisnis Anda?</h2>
                     <p class="cta-subtitle">Bergabunglah dengan puluhan ribu wirausaha cerdas lainnya sekarang juga. Kelola toko Anda lebih tenang, aman, dan menguntungkan.</p>
                     <div class="cta-buttons">
-                        <a href="#harga" class="btn btn-white">Mulai Uji Coba Gratis</a>
-                        <a href="#cara-kerja" class="btn btn-ghost" style="color: var(--white); border-color: rgba(255,255,255,0.2);">Pelajari Selengkapnya</a>
+                        <a href="https://play.google.com/store/apps/details?id=com.gokasir.net" target="_blank" rel="noopener noreferrer" class="btn btn-white">Download Aplikasi</a>
+                        <a href="#harga" class="btn btn-ghost" style="color: var(--white); border-color: rgba(255,255,255,0.2);">Pelajari Selengkapnya</a>
                     </div>
                 </div>
 
