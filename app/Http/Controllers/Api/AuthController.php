@@ -66,6 +66,7 @@ class AuthController extends BaseApiController
             'password'      => 'required|min:6|confirmed',
             'phone'         => 'required|string|max:30|unique:users,phone',
             'store_name'    => 'nullable|string|max:100',
+            'referral_code' => 'nullable|string|exists:users,referral_code',
         ]);
 
         DB::beginTransaction();
@@ -90,6 +91,21 @@ class AuthController extends BaseApiController
             // 3. Generate OTP
             $otp = (string) rand(100000, 999999);
 
+            // Handle referral
+            $referredById = null;
+            if ($request->referral_code) {
+                $referrer = User::where('referral_code', $request->referral_code)->first();
+                if ($referrer) {
+                    $referredById = $referrer->id;
+                }
+            }
+
+            // Generate unique referral code for this new user
+            $userReferralCode = strtoupper(\Illuminate\Support\Str::random(8));
+            while (User::where('referral_code', $userReferralCode)->exists()) {
+                $userReferralCode = strtoupper(\Illuminate\Support\Str::random(8));
+            }
+
             // 4. Create Owner User
             $user = User::create([
                 'tenant_id'      => $tenant->id,
@@ -103,6 +119,8 @@ class AuthController extends BaseApiController
                 'otp_expires_at' => now()->addMinutes(5),
                 'status'         => 0, // Unverified
                 'last_login'     => null,
+                'referral_code'  => $userReferralCode,
+                'referred_by_id' => $referredById,
             ]);
 
             // 5. Create 5 Default Products with Category, Unit, and Stock based on Business Type
@@ -148,6 +166,41 @@ class AuthController extends BaseApiController
                     'product_id' => $product->id,
                     'qty'        => $prodData['qty'],
                 ]);
+            }
+
+            // --- REFERRAL BONUS ---
+            if ($referredById && isset($referrer)) {
+                // 1. Bonus untuk pendaftar baru
+                $tenant->addToken(25);
+                \App\Models\TokenUsageLog::create([
+                    'tenant_id'      => $tenant->id,
+                    'type'           => 'gift',
+                    'amount'         => 25,
+                    'balance_before' => $tenant->token_balance - 25,
+                    'balance_after'  => $tenant->token_balance,
+                    'reference_type' => 'referral',
+                    'reference_id'   => $referrer->id,
+                    'description'    => 'Bonus mendaftar menggunakan kode referal',
+                    'created_at'     => now(),
+                ]);
+
+                // 2. Bonus untuk pemilik kode referal
+                $referrerTenant = $referrer->tenant;
+                if ($referrerTenant) {
+                    $referrerTenant->addToken(25);
+                    \App\Models\TokenUsageLog::create([
+                        'tenant_id'      => $referrerTenant->id,
+                        'user_id'        => $referrer->id,
+                        'type'           => 'gift',
+                        'amount'         => 25,
+                        'balance_before' => $referrerTenant->token_balance - 25,
+                        'balance_after'  => $referrerTenant->token_balance,
+                        'reference_type' => 'referral',
+                        'reference_id'   => $user->id,
+                        'description'    => 'Bonus referal dari pendaftaran toko: ' . $tenant->business_name,
+                        'created_at'     => now(),
+                    ]);
+                }
             }
 
             DB::commit();
@@ -208,12 +261,13 @@ class AuthController extends BaseApiController
         return $this->ok([
             'token' => $token,
             'user'  => [
-                'id'       => $user->id,
-                'name'     => $user->name,
-                'email'    => $user->email,
-                'phone'    => $user->phone,
-                'role'     => $user->role,
-                'store_id' => $user->store_id,
+                'id'            => $user->id,
+                'name'          => $user->name,
+                'email'         => $user->email,
+                'phone'         => $user->phone,
+                'role'          => $user->role,
+                'store_id'      => $user->store_id,
+                'referral_code' => $user->referral_code,
             ],
         ], 'Login berhasil.');
     }
