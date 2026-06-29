@@ -17,6 +17,7 @@ export default function Register() {
         store_name: "",
         password: "",
         password_confirmation: "",
+        referral_code: "",
     });
 
     // Step 2: OTP State
@@ -440,6 +441,26 @@ export default function Register() {
                                         className={`w-full appearance-none rounded-xl border border-gray-300 focus:border-brand-500 focus:ring-brand-500 px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all text-sm`}
                                         placeholder="Ulangi sandi"
                                     />
+                                </div>
+
+                                {/* Kode Referral */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        Kode Referral (Opsional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="referral_code"
+                                        value={formData.referral_code}
+                                        onChange={handleInputChange}
+                                        className={`w-full appearance-none rounded-xl border ${errors.referral_code ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-brand-500 focus:ring-brand-500"} px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all text-sm uppercase`}
+                                        placeholder="Contoh: REF123"
+                                    />
+                                    {errors.referral_code && (
+                                        <p className="mt-1.5 text-xs text-red-600 font-medium">
+                                            {errors.referral_code[0]}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
