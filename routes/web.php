@@ -25,3 +25,7 @@ Route::get('/profile/{tableCode}', function ($tableCode) {
 Route::get('/profile/{tableCode}/privacy', function ($tableCode) {
     return Inertia::render('Profile/Privacy', ['tableCode' => $tableCode]);
 });
+
+Route::get('/download', function () {
+    return redirect()->to('https://play.google.com/store/apps/details?id=com.gokasir.net');
+});
