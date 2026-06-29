@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Head, Link } from "@inertiajs/react";
 import axios from "axios";
 
@@ -22,6 +22,15 @@ export default function Register() {
 
     // Step 2: OTP State
     const [otp, setOtp] = useState("");
+
+    // Initialize from URL parameters
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const refParam = params.get("ref");
+        if (refParam) {
+            setFormData((prev) => ({ ...prev, referral_code: refParam }));
+        }
+    }, []);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
