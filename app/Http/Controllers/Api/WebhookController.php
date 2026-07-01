@@ -73,12 +73,32 @@ class WebhookController extends BaseApiController
                 $topup->user_id
             );
 
+            // Jika ini adalah paket aktivasi, aktifkan tenant
+            if ($topup->pricing && $topup->pricing->type === 'activation') {
+                $tenant->is_activated = true;
+                $tenant->save();
+
+                // Berikan komisi 80% ke sales jika ada referrer
+                $owner = \App\Models\User::where('tenant_id', $tenant->id)->where('role', 'owner')->first();
+                if ($owner && $owner->referred_by_id) {
+                    $salesUser = \App\Models\User::find($owner->referred_by_id);
+                    if ($salesUser && $salesUser->role === 'sales') {
+                        $commission = $topup->price * 0.80; // 80% dari harga transaksi
+                        $salesUser->addSalesWalletCommission(
+                            $commission,
+                            'activation_bonus',
+                            $topup,
+                            "Bonus aktivasi paket {$topup->pricing->name} dari tenant {$tenant->business_name}"
+                        );
+                    }
+                }
+            }
+
             Log::channel('ipaymu')->info('Topup SUCCESS', [
                 'order'         => $topup->order_number,
                 'token_amount'  => $topup->token_amount,
                 'tenant_id'     => $tenant->id,
             ]);
-
         } else {
             if ($statusCode == 3 || strtolower($status) === 'expired' || strtolower($status) === 'kadaluarsa') {
                 $topup->update(['status' => 'expired']);
@@ -133,12 +153,13 @@ class WebhookController extends BaseApiController
             DB::beginTransaction();
             try {
                 $invoiceNum = 'INV-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -5));
+                $cashierId = $order->confirmed_by ?? \App\Models\User::where('tenant_id', $order->tenant_id)->value('id');
 
                 $sale = Sale::create([
                     'tenant_id'       => $order->tenant_id,
                     'store_id'        => $order->store_id,
                     'invoice_number'  => $invoiceNum,
-                    'cashier_id'      => $order->confirmed_by ?? 1, // Sistem bot / Kasir pengkonfirmasi
+                    'cashier_id'      => $cashierId,
                     'subtotal'        => $order->subtotal,
                     'discount_amount' => $order->discount_amount,
                     'tax_amount'      => $order->tax_amount,
@@ -148,7 +169,7 @@ class WebhookController extends BaseApiController
                     'payment_method'  => $order->payment_method ?? 'qris',
                     'payment_status'  => 'paid',
                     'notes'           => 'Cashless order dari Meja: ' . $order->table->name . ' | ' . $order->order_number,
-                    'transaction_date'=> now(),
+                    'transaction_date' => now(),
                     'created_at'      => now(),
                 ]);
 
@@ -185,7 +206,7 @@ class WebhookController extends BaseApiController
                 }
 
                 $order->update([
-                    'status'         => 'paid',
+                    'status'         => 'confirmed',
                     'payment_status' => 'paid',
                     'sale_id'        => $sale->id,
                 ]);
@@ -197,7 +218,7 @@ class WebhookController extends BaseApiController
                     $tenant,
                     $sale->id,
                     $order->store_id,
-                    $order->confirmed_by ?? 1
+                    $cashierId
                 );
 
                 DB::commit();
@@ -206,6 +227,12 @@ class WebhookController extends BaseApiController
                 DB::rollBack();
                 Log::channel('ipaymu')->error('Gagal proses order webhook', ['error' => $e->getMessage()]);
                 return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+            }
+        } else {
+            if ($statusCode == -2 || $statusCode == 3 || strtolower($status) === 'expired' || strtolower($status) === 'kadaluarsa') {
+                $order->update(['status' => 'cancelled', 'payment_status' => 'unpaid']);
+            } elseif ($statusCode == -1 || $statusCode == 2 || strtolower($status) === 'gagal' || strtolower($status) === 'failed') {
+                $order->update(['status' => 'cancelled', 'payment_status' => 'unpaid']);
             }
         }
 

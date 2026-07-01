@@ -34,6 +34,11 @@ class TableOrder extends Model
         return $this->belongsTo(Table::class);
     }
 
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
+    }
+
     public function session()
     {
         return $this->belongsTo(TableSession::class, 'session_id');
@@ -66,6 +71,6 @@ class TableOrder extends Model
 
     public function isPaid(): bool
     {
-        return $this->status === 'paid';
+        return $this->status === 'completed';
     }
 }

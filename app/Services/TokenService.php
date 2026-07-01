@@ -66,7 +66,7 @@ class TokenService
     /**
      * Token gratis saat tenant baru dibuat.
      */
-    public function giftWelcomeToken(Tenant $tenant, int $amount = 500): void
+    public function giftWelcomeToken(Tenant $tenant, int $amount = 25): void
     {
         $balanceBefore = $tenant->token_balance;
         $tenant->addToken($amount);

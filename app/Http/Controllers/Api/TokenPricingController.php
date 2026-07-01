@@ -10,24 +10,80 @@ class TokenPricingController extends BaseApiController
     // GET /api/token-pricing
     public function index()
     {
-        $tenant  = auth()->user()->tenant;
-        $pricing = TokenPricing::active()
-            ->orderBy('sort_order')
-            ->get()
-            ->map(function ($p) use ($tenant) {
-                $effectivePrice = $p->type === 'unit'
-                    ? $tenant->getEffectiveTokenPrice($p)
-                    : (float) $p->price;  // paket tidak berubah
+        $tenant = auth()->user()->tenant;
+        $user   = auth()->user();
+        
+        $query = TokenPricing::active()->orderBy('sort_order');
 
-                return array_merge($p->toArray(), [
-                    'total_token'      => $p->total_token,
-                    'effective_price'  => $effectivePrice,
-                    'is_mitra_price'   => $tenant->hasMitraPrice() && $p->type === 'unit',
-                    'price_per_token'  => $p->total_token > 0
-                        ? round($effectivePrice / $p->total_token, 2)
-                        : 0,
-                ]);
-            });
+        if (!$tenant->is_activated) {
+            $query->where('type', 'activation');
+        } else {
+            $query->whereIn('type', ['unit', 'package']);
+        }
+
+        // Get custom prices if referred by sales
+        $customPrices = [];
+        if (!$tenant->is_activated && $user->referred_by_id) {
+            $referrer = \App\Models\User::find($user->referred_by_id);
+            if ($referrer && $referrer->role === 'sales') {
+                $customPrices = \App\Models\SalesActivationPrice::where('sales_id', $referrer->id)
+                    ->pluck('custom_price', 'token_pricing_id');
+            }
+        }
+
+        $pricing = $query->get()->map(function ($p) use ($tenant, $customPrices) {
+            $effectivePrice = (float) $p->price;
+            
+            if ($p->type === 'unit') {
+                $effectivePrice = $tenant->getEffectiveTokenPrice($p);
+            } elseif ($p->type === 'activation' && isset($customPrices[$p->id])) {
+                $effectivePrice = (float) $customPrices[$p->id];
+            }
+
+            return array_merge($p->toArray(), [
+                'total_token'      => $p->token_amount, // fallback to token_amount if total_token not defined in schema
+                'effective_price'  => $effectivePrice,
+                'is_mitra_price'   => $tenant->hasMitraPrice() && $p->type === 'unit',
+                'price_per_token'  => $p->token_amount > 0
+                    ? round($effectivePrice / $p->token_amount, 2)
+                    : 0,
+            ]);
+        });
+
+        return $this->ok($pricing);
+    }
+
+    // GET /api/public/activation-packages
+    public function publicPackages(Request $request)
+    {
+        $referralCode = $request->query('referral_code');
+        
+        $query = TokenPricing::active()->where('type', 'activation')->orderBy('sort_order');
+        $customPrices = [];
+
+        if ($referralCode) {
+            $referrer = \App\Models\User::where('referral_code', $referralCode)->first();
+            if ($referrer && $referrer->role === 'sales') {
+                $customPrices = \App\Models\SalesActivationPrice::where('sales_id', $referrer->id)
+                    ->pluck('custom_price', 'token_pricing_id');
+            }
+        }
+
+        $pricing = $query->get()->map(function ($p) use ($customPrices) {
+            $effectivePrice = (float) $p->price;
+            
+            if (isset($customPrices[$p->id])) {
+                $effectivePrice = (float) $customPrices[$p->id];
+            }
+
+            return array_merge($p->toArray(), [
+                'total_token'      => $p->token_amount,
+                'effective_price'  => $effectivePrice,
+                'price_per_token'  => $p->token_amount > 0
+                    ? round($effectivePrice / $p->token_amount, 2)
+                    : 0,
+            ]);
+        });
 
         return $this->ok($pricing);
     }

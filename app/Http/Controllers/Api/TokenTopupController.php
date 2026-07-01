@@ -55,11 +55,28 @@ class TokenTopupController extends BaseApiController
             $qty         = $request->qty ?? 1;
             $tokenAmount = $pricing->token_amount * $qty;
             $totalPrice  = $hargaPerToken * $qty;          // ← pakai harga efektif
+        } elseif ($pricing->type === 'activation') {
+            $qty         = 1;
+            $tokenAmount = $pricing->token_amount;
+            $totalPrice  = $pricing->price;
+
+            $user = auth()->user();
+            if ($user->referred_by_id) {
+                $referrer = \App\Models\User::find($user->referred_by_id);
+                if ($referrer && $referrer->role === 'sales') {
+                    $customPrice = \App\Models\SalesActivationPrice::where('sales_id', $referrer->id)
+                        ->where('token_pricing_id', $pricing->id)
+                        ->value('custom_price');
+                    if ($customPrice !== null) {
+                        $totalPrice = $customPrice;
+                    }
+                }
+            }
         } else {
             // Paket: harga paket tidak terpengaruh harga mitra
             // (paket sudah punya harga bundel tersendiri)
             $qty         = 1;
-            $tokenAmount = $pricing->total_token;
+            $tokenAmount = $pricing->token_amount;
             $totalPrice  = $pricing->price;               // ← tetap pakai harga paket
         }
 

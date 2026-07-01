@@ -23,9 +23,19 @@ class TenantController extends BaseApiController
             'business_type' => 'nullable|string|max:100',
             'email'         => 'nullable|email|max:100',
             'phone'         => 'nullable|string|max:30',
+            'qris'          => 'nullable|image|max:2048',
         ]);
 
-        $tenant->update($request->only('business_name', 'business_type', 'email', 'phone'));
+        $data = $request->only('business_name', 'business_type', 'email', 'phone');
+
+        if ($request->hasFile('qris')) {
+            if ($tenant->qris) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($tenant->qris);
+            }
+            $data['qris'] = $request->file('qris')->store('tenants/qris', 'public');
+        }
+
+        $tenant->update($data);
 
         return $this->ok($tenant, 'Informasi tenant/usaha berhasil diperbarui.');
     }

@@ -26,17 +26,29 @@ class TokenPricingSeeder extends Seeder
                 'updated_at'   => now(),
             ],
             [
-                'type'         => 'package',
-                'name'         => 'Paket Hemat 500K',
-                'description'  => 'Beli Web Admin Analisis Bisnis + Bonus 500 token gratis',
-                'price'        => 500000.00,
-                'token_amount' => 5000,
-                'token_bonus'  => 500,
+                'type'         => 'activation',
+                'name'         => 'Paket Aktivasi Basic',
+                'description'  => 'Mendapatkan 500 Token',
+                'price'        => 50000.00,
+                'token_amount' => 500,
+                'token_bonus'  => 0,
                 'is_active'    => true,
                 'sort_order'   => 2,
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ],
+            [
+                'type'         => 'activation',
+                'name'         => 'Paket Aktivasi Pro (Printer)',
+                'description'  => 'Mendapatkan 500 Token + Printer Thermal',
+                'price'        => 250000.00,
+                'token_amount' => 500,
+                'token_bonus'  => 0,
+                'is_active'    => true,
+                'sort_order'   => 3,
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]
         ]);
     }
 }

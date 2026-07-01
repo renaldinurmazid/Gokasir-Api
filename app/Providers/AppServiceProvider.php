@@ -22,5 +22,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Tenant::observe(TenantObserver::class);
+        \App\Models\Sale::observe(\App\Observers\SaleObserver::class);
     }
 }

@@ -259,7 +259,7 @@ class PublicOrderController extends BaseApiController
             'message' => match($order->status) {
                 'pending'    => 'Menunggu konfirmasi dari kasir.',
                 'confirmed'  => 'Pesanan dikonfirmasi, sedang diproses.',
-                'paid'       => 'Pesanan selesai. Terima kasih!',
+                'completed'  => 'Pesanan selesai. Terima kasih!',
                 'cancelled'  => 'Pesanan dibatalkan.',
                 default      => '-',
             },

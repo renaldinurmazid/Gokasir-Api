@@ -112,8 +112,8 @@ class TableOrderController extends BaseApiController
     {
         abort_if($tableOrder->tenant_id !== $this->tenantId(), 403);
 
-        if (!$tableOrder->isConfirmed()) {
-            return $this->fail('Pesanan harus dikonfirmasi dulu sebelum diproses pembayaran.', 422);
+        if (!$tableOrder->isPending()) {
+            return $this->fail('Hanya pesanan berstatus pending yang dapat diproses pembayarannya.', 422);
         }
 
         if ($tableOrder->isPaid()) {
@@ -159,7 +159,7 @@ class TableOrderController extends BaseApiController
             ]);
 
             // Pindahkan items ke sale_items + kurangi stok
-            foreach ($tableOrder->items()->where('status', 'confirmed')->get() as $item) {
+            foreach ($tableOrder->items()->get() as $item) {
                 SaleItem::create([
                     'sale_id'    => $sale->id,
                     'product_id' => $item->product_id,
@@ -192,17 +192,20 @@ class TableOrderController extends BaseApiController
                 ]);
             }
 
-            // Update TableOrder → paid
+            // Update TableOrder → confirmed
             $tableOrder->update([
-                'status'         => 'paid',
+                'status'         => 'confirmed',
+                'confirmed_by'   => auth()->id(),
+                'confirmed_at'   => now(),
                 'payment_status' => 'paid',
                 'sale_id'        => $sale->id,
             ]);
 
-            // Tutup sesi meja
+            $tableOrder->items()->update(['status' => 'confirmed']);
+
+            // Update status sesi
             $tableOrder->session->update([
                 'status'    => 'paid',
-                'closed_at' => now(),
             ]);
 
             // Potong token
@@ -225,6 +228,36 @@ class TableOrderController extends BaseApiController
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->fail('Gagal memproses pembayaran: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST /api/table-orders/{table_order}/complete
+     * Kasir selesaikan pesanan (masakan sudah jadi & disajikan) -> status: completed
+     */
+    public function complete(TableOrder $tableOrder)
+    {
+        abort_if($tableOrder->tenant_id !== $this->tenantId(), 403);
+
+        if (!$tableOrder->isConfirmed()) {
+            return $this->fail('Pesanan harus dalam status confirmed sebelum diselesaikan.', 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $tableOrder->update([
+                'status' => 'completed',
+            ]);
+
+            $tableOrder->session->update([
+                'closed_at' => now(),
+            ]);
+
+            DB::commit();
+            return $this->ok($tableOrder->load('items.product', 'table'), 'Pesanan selesai dan ditutup.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->fail('Gagal menyelesaikan pesanan: ' . $e->getMessage(), 500);
         }
     }
 

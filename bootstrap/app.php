@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'tenant' => \App\Http\Middleware\ResolveTenant::class,
             'owner'  => \App\Http\Middleware\EnsureOwner::class,
+            'activated' => \App\Http\Middleware\EnsureActivated::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

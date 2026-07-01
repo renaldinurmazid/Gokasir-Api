@@ -21,6 +21,7 @@ class User extends Authenticatable
         'otp_code',
         'otp_expires_at',
         'status',
+        'is_approved',
         'last_login',
         'referral_code',
         'referred_by_id',
@@ -59,5 +60,45 @@ class User extends Authenticatable
     public function referrals()
     {
         return $this->hasMany(User::class, 'referred_by_id');
+    }
+
+    public function salesWallet()
+    {
+        return $this->hasOne(SalesWallet::class, 'sales_id');
+    }
+
+    public function addSalesWalletCommission($amount, $type, $referenceModel, $description = null)
+    {
+        if ($this->role !== 'sales') {
+            return false;
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($amount, $type, $referenceModel, $description) {
+            $wallet = $this->salesWallet()->firstOrCreate(
+                ['sales_id' => $this->id],
+                ['balance' => 0]
+            );
+
+            // Lock the row for update
+            $wallet = SalesWallet::where('id', $wallet->id)->lockForUpdate()->first();
+
+            $balanceBefore = $wallet->balance;
+            $balanceAfter = $balanceBefore + $amount;
+
+            $wallet->balance = $balanceAfter;
+            $wallet->save();
+
+            $wallet->transactions()->create([
+                'type'           => $type,
+                'amount'         => $amount,
+                'reference_type' => get_class($referenceModel),
+                'reference_id'   => $referenceModel->id,
+                'description'    => $description,
+                'balance_before' => $balanceBefore,
+                'balance_after'  => $balanceAfter,
+            ]);
+        });
+
+        return true;
     }
 }

@@ -58,8 +58,11 @@ class AuthController extends BaseApiController
     // POST /api/auth/register
     public function register(Request $request)
     {
+        $role = $request->input('role', 'owner');
+
         $request->validate([
-            'business_name' => 'required|string|max:150',
+            'role'          => 'nullable|string|in:owner,sales',
+            'business_name' => $role === 'owner' ? 'required|string|max:150' : 'nullable|string|max:150',
             'business_type' => 'nullable|string|max:100',
             'name'          => 'required|string|max:100',
             'email'         => 'nullable|email',
@@ -67,38 +70,51 @@ class AuthController extends BaseApiController
             'phone'         => 'required|string|max:30|unique:users,phone',
             'store_name'    => 'nullable|string|max:100',
             'referral_code' => 'nullable|string|exists:users,referral_code',
+            'pricing_id'    => 'nullable|exists:token_pricing,id',
         ]);
+
+        $businessName = $role === 'sales' ? 'Toko ' . $request->name : $request->business_name;
+        $businessType = $role === 'sales' ? 'retail' : $request->business_type;
+        $storeName    = $request->store_name ?? $businessName;
 
         DB::beginTransaction();
         try {
+            // Handle referral
+            $referredById = null;
+            $isActivated = true;
+            if ($request->referral_code && $role !== 'sales') {
+                $referrer = User::where('referral_code', $request->referral_code)->first();
+                if ($referrer) {
+                    $referredById = $referrer->id;
+                    if ($referrer->role === 'sales') {
+                        $isActivated = false;
+                    }
+                }
+            }
+
             // 1. Create Tenant
             $tenant = Tenant::create([
-                'business_name'     => $request->business_name,
-                'business_type'     => $request->business_type,
+                'business_name'     => $businessName,
+                'business_type'     => $businessType,
                 'email'             => $request->email,
                 'phone'             => $request->phone,
                 'subscription_plan' => 'free',
                 'status'            => 'active',
+                'is_activated'      => $isActivated,
                 'expired_at'        => now()->addMonths(1),
+                'token_balance'     => $referredById ? 0 : 25, // No welcome token if referred
             ]);
 
             // 2. Create Default Store Branch
             $store = Store::create([
                 'tenant_id' => $tenant->id,
-                'name'      => $request->store_name ?? ($request->business_name),
+                'name'      => $storeName,
             ]);
 
             // 3. Generate OTP
             $otp = (string) rand(100000, 999999);
 
-            // Handle referral
-            $referredById = null;
-            if ($request->referral_code) {
-                $referrer = User::where('referral_code', $request->referral_code)->first();
-                if ($referrer) {
-                    $referredById = $referrer->id;
-                }
-            }
+            // moved above
 
             // Generate unique referral code for this new user
             $userReferralCode = strtoupper(\Illuminate\Support\Str::random(8));
@@ -106,11 +122,11 @@ class AuthController extends BaseApiController
                 $userReferralCode = strtoupper(\Illuminate\Support\Str::random(8));
             }
 
-            // 4. Create Owner User
+            // 4. Create Owner or Sales User
             $user = User::create([
                 'tenant_id'      => $tenant->id,
                 'store_id'       => null,
-                'role'           => 'owner',
+                'role'           => $role,
                 'name'           => $request->name,
                 'email'          => $request->email,
                 'phone'          => $request->phone,
@@ -118,13 +134,14 @@ class AuthController extends BaseApiController
                 'otp_code'       => $otp,
                 'otp_expires_at' => now()->addMinutes(5),
                 'status'         => 0, // Unverified
+                'is_approved'    => $role === 'sales' ? false : true,
                 'last_login'     => null,
                 'referral_code'  => $userReferralCode,
                 'referred_by_id' => $referredById,
             ]);
 
             // 5. Create 5 Default Products with Category, Unit, and Stock based on Business Type
-            $seedData = $this->getSeedingDataByBusinessType($request->business_type);
+            $seedData = $this->getSeedingDataByBusinessType($businessType);
 
             $createdCategories = [];
             foreach ($seedData['categories'] as $catName) {
@@ -185,37 +202,111 @@ class AuthController extends BaseApiController
                 ]);
 
                 // 2. Bonus untuk pemilik kode referal
-                $referrerTenant = $referrer->tenant;
-                if ($referrerTenant) {
-                    $referrerTenant->addToken(25);
-                    \App\Models\TokenUsageLog::create([
-                        'tenant_id'      => $referrerTenant->id,
-                        'user_id'        => $referrer->id,
-                        'type'           => 'gift',
-                        'amount'         => 25,
-                        'balance_before' => $referrerTenant->token_balance - 25,
-                        'balance_after'  => $referrerTenant->token_balance,
-                        'reference_type' => 'referral',
-                        'reference_id'   => $user->id,
-                        'description'    => 'Bonus referal dari pendaftaran toko: ' . $tenant->business_name,
-                        'created_at'     => now(),
-                    ]);
-                }
+                // $referrerTenant = $referrer->tenant;
+                // if ($referrerTenant) {
+                //     $referrerTenant->addToken(25);
+                //     \App\Models\TokenUsageLog::create([
+                //         'tenant_id'      => $referrerTenant->id,
+                //         'user_id'        => $referrer->id,
+                //         'type'           => 'gift',
+                //         'amount'         => 25,
+                //         'balance_before' => $referrerTenant->token_balance - 25,
+                //         'balance_after'  => $referrerTenant->token_balance,
+                //         'reference_type' => 'referral',
+                //         'reference_id'   => $user->id,
+                //         'description'    => 'Bonus referal dari pendaftaran toko: ' . $tenant->business_name,
+                //         'created_at'     => now(),
+                //     ]);
+                // }
             }
 
             DB::commit();
 
+            // --- CREATE PENDING TOPUP IF PRICING_ID IS PROVIDED ---
+            if ($request->pricing_id && $role !== 'sales') {
+                $pricing = \App\Models\TokenPricing::find($request->pricing_id);
+                if ($pricing && $pricing->type === 'activation') {
+                    $orderNumber = 'TKN-' . strtoupper(\Illuminate\Support\Str::random(4)) . '-' . time();
+                    $totalPrice = $pricing->price;
+                    
+                    if (isset($referrer) && $referrer->role === 'sales') {
+                        $customPrice = \App\Models\SalesActivationPrice::where('sales_id', $referrer->id)
+                            ->where('token_pricing_id', $pricing->id)
+                            ->value('custom_price');
+                        if ($customPrice) {
+                            $totalPrice = $customPrice;
+                        }
+                    }
+
+                    $topup = \App\Models\TokenTopup::create([
+                        'tenant_id'      => $tenant->id,
+                        'user_id'        => $user->id,
+                        'pricing_id'     => $pricing->id,
+                        'order_number'   => $orderNumber,
+                        'token_amount'   => $pricing->token_amount,
+                        'price'          => $totalPrice,
+                        'qty'            => 1,
+                        'payment_method' => 'qris',
+                        'payment_channel' => 'qris',
+                        'status'         => 'pending',
+                        'expired_at'     => now()->addHours(24),
+                    ]);
+
+                    $buyerPhone = preg_replace('/[^0-9+]/', '', $user->phone);
+                    $buyerPhone = preg_replace('/^(?:\+62|0)/', '62', $buyerPhone);
+
+                    try {
+                        $ipaymu = app(\App\Services\IPaymuService::class);
+                        $ipaymuResponse = $ipaymu->createPayment([
+                            'tenant_id'       => $tenant->id,
+                            'order_number'    => $orderNumber,
+                            'amount'          => (int) $totalPrice,
+                            'payment_method'  => 'qris',
+                            'payment_channel' => 'qris',
+                            'buyer_name'      => $user->name,
+                            'buyer_email'     => $user->email ?? 'customer@gokasir.net',
+                            'buyer_phone'     => $buyerPhone,
+                            'description'     => "Aktivasi {$pricing->name} GoKasir",
+                            'notify_url'      => config('app.url') . '/api/webhooks/ipaymu',
+                        ]);
+
+                        $responseData = $ipaymuResponse['Data'] ?? [];
+
+                        $topup->update([
+                            'ipaymu_trx_id'       => $responseData['TransactionId'] ?? null,
+                            'ipaymu_reference'    => $responseData['ReferenceId'] ?? null,
+                            'payment_no'          => $responseData['PaymentNo'] ?? null,
+                            'payment_name'        => $responseData['PaymentName'] ?? null,
+                            'payment_url'         => $responseData['Url'] ?? $responseData['QrImage'] ?? $responseData['QrTemplate'] ?? $responseData['PaymentNo'] ?? null,
+                            'expired_at'          => isset($responseData['Expired']) ? \Carbon\Carbon::parse($responseData['Expired']) : now()->addHours(24),
+                            'ipaymu_raw_response' => json_encode($ipaymuResponse),
+                        ]);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error("Failed to create iPaymu activation order during registration: " . $e->getMessage());
+                    }
+                }
+            }
+
             dispatch(new SendMessageWhatsAppJobs("Kode verifikasi GoKasir Anda adalah: {$otp}. Berlaku selama 5 menit.", $user->phone));
             try {
-                $text = "📢 *Pendaftaran Baru GoKasir*\n\n"
-                    . "🏢 *Nama Bisnis:* " . $tenant->business_name . "\n"
-                    . "💼 *Tipe Bisnis:* " . ($tenant->business_type ?? '-') . "\n"
-                    . "👤 *Nama Owner:* " . $user->name . "\n"
-                    . "📞 *No. HP:* " . $user->phone . "\n"
-                    . "✉️ *Email:* " . ($user->email ?? '-') . "\n"
-                    . "🏪 *Nama Toko:* " . ($store->name ?? '-') . "\n"
-                    . "🔑 *OTP:* `{$otp}`\n"
-                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s');
+                if ($role === 'sales') {
+                    $text = "📢 *Pendaftaran Baru Sales GoKasir*\n\n"
+                        . "👤 *Nama Sales:* " . $user->name . "\n"
+                        . "📞 *No. HP:* " . $user->phone . "\n"
+                        . "✉️ *Email:* " . ($user->email ?? '-') . "\n"
+                        . "🔑 *OTP:* `{$otp}`\n"
+                        . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s');
+                } else {
+                    $text = "📢 *Pendaftaran Baru GoKasir*\n\n"
+                        . "🏢 *Nama Bisnis:* " . $tenant->business_name . "\n"
+                        . "💼 *Tipe Bisnis:* " . ($tenant->business_type ?? '-') . "\n"
+                        . "👤 *Nama Owner:* " . $user->name . "\n"
+                        . "📞 *No. HP:* " . $user->phone . "\n"
+                        . "✉️ *Email:* " . ($user->email ?? '-') . "\n"
+                        . "🏪 *Nama Toko:* " . ($store->name ?? '-') . "\n"
+                        . "🔑 *OTP:* `{$otp}`\n"
+                        . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s');
+                }
 
                 dispatch(new SendTelegramMessageJobs($text));
             } catch (\Exception $e) {
@@ -253,6 +344,10 @@ class AuthController extends BaseApiController
 
         if ($user->status != 1) {
             return $this->fail('Akun tidak aktif.', 403);
+        }
+
+        if ($user->role === 'sales' && !$user->is_approved) {
+            return $this->fail('Akun sales Anda sedang dalam peninjauan. Harap tunggu persetujuan dari admin.', 403);
         }
 
         $user->update(['last_login' => now()]);
@@ -305,6 +400,10 @@ class AuthController extends BaseApiController
             'otp_expires_at' => null,
             'last_login'     => now(),
         ]);
+
+        if ($user->role === 'sales' && !$user->is_approved) {
+            return $this->ok(null, 'Verifikasi berhasil. Akun sales Anda saat ini sedang dalam peninjauan admin. Kami akan menghubungi Anda setelah disetujui.');
+        }
 
         $token = $user->createToken('gokasir')->plainTextToken;
 

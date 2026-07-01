@@ -15,9 +15,16 @@ class IPaymuService
     public function __construct()
     {
         $this->isSandbox = config('ipaymu.sandbox', true);
-        $this->apiKey    = config('ipaymu.api_key', '');
-        $this->va        = config('ipaymu.va', '');
-        $this->baseUrl   = $this->isSandbox
+
+        if ($this->isSandbox) {
+            $this->apiKey = config('ipaymu.sandbox_api_key', '');
+            $this->va     = config('ipaymu.sandbox_va', '');
+        } else {
+            $this->apiKey = config('ipaymu.api_key', '');
+            $this->va     = config('ipaymu.va', '');
+        }
+
+        $this->baseUrl = $this->isSandbox
             ? 'https://sandbox.ipaymu.com/api/v2'
             : 'https://my.ipaymu.com/api/v2';
     }
@@ -62,30 +69,30 @@ class IPaymuService
             );
         }
 
-        try {
-            $resData = $data['Data'] ?? [];
-            \Illuminate\Support\Facades\DB::table('ipaymu_data')->insert([
-                'sessionId'     => $resData['SessionId'] ?? null,
-                'TransactionId' => $resData['TransactionId'] ?? null,
-                'Fee'           => $resData['Fee'] ?? 0,
-                'Expired'       => $resData['Expired'] ?? null,
-                'PaymentNo'     => $resData['PaymentNo'] ?? null,
-                'PaymentName'   => $resData['PaymentName'] ?? null,
-                'Total'         => $resData['Total'] ?? 0,
-                'Via'           => $resData['Via'] ?? null,
-                'Channel'       => $resData['Channel'] ?? null,
-                'nama'          => $params['buyer_name'] ?? null,
-                'tenants_id'    => $params['tenant_id'] ?? null,
-                'email'         => $params['buyer_email'] ?? null,
-                'phone'         => $params['buyer_phone'] ?? null,
-                'jumlah'        => $params['amount'] ?? 0,
-                'nominal'       => $params['amount'] ?? 0,
-                'status'        => 'BARU',
-                'created_date'  => now(),
-            ]);
-        } catch (\Exception $e) {
-            Log::channel('ipaymu')->error('Gagal menyimpan log ipaymu_data: ' . $e->getMessage());
-        }
+        // try {
+        //     $resData = $data['Data'] ?? [];
+        //     \Illuminate\Support\Facades\DB::table('ipaymu_data')->insert([
+        //         'sessionId'     => $resData['SessionId'] ?? null,
+        //         'TransactionId' => $resData['TransactionId'] ?? null,
+        //         'Fee'           => $resData['Fee'] ?? 0,
+        //         'Expired'       => $resData['Expired'] ?? null,
+        //         'PaymentNo'     => $resData['PaymentNo'] ?? null,
+        //         'PaymentName'   => $resData['PaymentName'] ?? null,
+        //         'Total'         => $resData['Total'] ?? 0,
+        //         'Via'           => $resData['Via'] ?? null,
+        //         'Channel'       => $resData['Channel'] ?? null,
+        //         'nama'          => $params['buyer_name'] ?? null,
+        //         'tenants_id'    => $params['tenant_id'] ?? null,
+        //         'email'         => $params['buyer_email'] ?? null,
+        //         'phone'         => $params['buyer_phone'] ?? null,
+        //         'jumlah'        => $params['amount'] ?? 0,
+        //         'nominal'       => $params['amount'] ?? 0,
+        //         'status'        => 'BARU',
+        //         'created_date'  => now(),
+        //     ]);
+        // } catch (\Exception $e) {
+        //     Log::channel('ipaymu')->error('Gagal menyimpan log ipaymu_data: ' . $e->getMessage());
+        // }
 
         return $data;
     }
@@ -110,10 +117,10 @@ class IPaymuService
         }
 
         // 2. Pisahkan signature yang diterima (iPaymu callbacks send signature in x-signature header)
-        $receivedSig = $data['signature'] 
-            ?? $request->header('x-signature') 
-            ?? $request->header('signature') 
-            ?? $request->input('signature') 
+        $receivedSig = $data['signature']
+            ?? $request->header('x-signature')
+            ?? $request->header('signature')
+            ?? $request->input('signature')
             ?? '';
 
         if (empty($receivedSig)) {

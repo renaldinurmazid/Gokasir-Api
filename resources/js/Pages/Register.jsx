@@ -7,7 +7,9 @@ export default function Register() {
     const [processing, setProcessing] = useState(false);
     const [errors, setErrors] = useState({});
 
-    // Step 1: Registration Form State
+    const [activeTab, setActiveTab] = useState("owner");
+
+    // Step 1: Registration Form State (Owner)
     const [formData, setFormData] = useState({
         business_name: "",
         business_type: "",
@@ -18,10 +20,25 @@ export default function Register() {
         password: "",
         password_confirmation: "",
         referral_code: "",
+        pricing_id: "",
+    });
+
+    // Step 1: Registration Form State (Sales)
+    const [formDataSales, setFormDataSales] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        password: "",
+        password_confirmation: "",
+        referral_code: "",
     });
 
     // Step 2: OTP State
     const [otp, setOtp] = useState("");
+
+    // Activation Packages State
+    const [activationPackages, setActivationPackages] = useState([]);
+    const [loadingPackages, setLoadingPackages] = useState(false);
 
     // Initialize from URL parameters
     useEffect(() => {
@@ -29,12 +46,56 @@ export default function Register() {
         const refParam = params.get("ref");
         if (refParam) {
             setFormData((prev) => ({ ...prev, referral_code: refParam }));
+            setFormDataSales((prev) => ({ ...prev, referral_code: refParam }));
         }
     }, []);
+
+    // Fetch activation packages when referral code changes
+    useEffect(() => {
+        if (activeTab === "owner" && formData.referral_code.length >= 3) {
+            const delayDebounceFn = setTimeout(() => {
+                setLoadingPackages(true);
+                axios.get(`/api/public/activation-packages?referral_code=${formData.referral_code}`)
+                    .then((response) => {
+                        if (response.data && response.data.data) {
+                            setActivationPackages(response.data.data);
+                            if (response.data.data.length > 0) {
+                                // Default select the first package
+                                setFormData(prev => ({ ...prev, pricing_id: response.data.data[0].id }));
+                            } else {
+                                setFormData(prev => ({ ...prev, pricing_id: "" }));
+                            }
+                        }
+                    })
+                    .catch((err) => {
+                        console.error("Failed to fetch activation packages", err);
+                        setActivationPackages([]);
+                        setFormData(prev => ({ ...prev, pricing_id: "" }));
+                    })
+                    .finally(() => {
+                        setLoadingPackages(false);
+                    });
+            }, 800);
+
+            return () => clearTimeout(delayDebounceFn);
+        } else {
+            setActivationPackages([]);
+            setFormData(prev => ({ ...prev, pricing_id: "" }));
+        }
+    }, [formData.referral_code, activeTab]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+        // Clear error when user types
+        if (errors[name]) {
+            setErrors((prev) => ({ ...prev, [name]: "" }));
+        }
+    };
+
+    const handleInputSalesChange = (e) => {
+        const { name, value } = e.target;
+        setFormDataSales((prev) => ({ ...prev, [name]: value }));
         // Clear error when user types
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: "" }));
@@ -73,14 +134,52 @@ export default function Register() {
         }
     };
 
-    const handleOtpSubmit = async (e) => {
+    const handleRegisterSalesSubmit = async (e) => {
         e.preventDefault();
         setProcessing(true);
         setErrors({});
 
         try {
+            const response = await axios.post("/api/auth/register", {
+                ...formDataSales,
+                role: "sales",
+            });
+            if (response.status === 201) {
+                // Registration successful, move to OTP step
+                setStep(2);
+            }
+        } catch (error) {
+            if (
+                error.response &&
+                error.response.data &&
+                error.response.data.errors
+            ) {
+                setErrors(error.response.data.errors);
+            } else if (
+                error.response &&
+                error.response.data &&
+                error.response.data.message
+            ) {
+                setErrors({ general: error.response.data.message });
+            } else {
+                setErrors({ general: "Terjadi kesalahan. Silakan coba lagi." });
+            }
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const handleOtpSubmit = async (e) => {
+        e.preventDefault();
+        setProcessing(true);
+        setErrors({});
+
+        const phoneToVerify =
+            activeTab === "owner" ? formData.phone : formDataSales.phone;
+
+        try {
             const response = await axios.post("/api/auth/verify-otp", {
-                phone: formData.phone,
+                phone: phoneToVerify,
                 otp_code: otp,
             });
 
@@ -163,17 +262,47 @@ export default function Register() {
                     </div>
                 </Link>
                 <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">
-                    {step === 1 && "Buat Akun Bisnis"}
+                    {step === 1 && activeTab === "owner" && "Buat Akun Bisnis"}
+                    {step === 1 && activeTab === "sales" && "Buat Akun Sales"}
                     {step === 2 && "Verifikasi Nomor HP"}
                     {step === 3 && "Pendaftaran Berhasil!"}
                 </h2>
                 <p className="mt-2 text-center text-sm text-gray-600">
-                    {step === 1 && <>Kembangkan bisnis anda bersama kami</>}
+                    {step === 1 && activeTab === "owner" && (
+                        <>Kembangkan bisnis anda bersama kami</>
+                    )}
+                    {step === 1 && activeTab === "sales" && (
+                        <>Bergabung sebagai Sales Marketing</>
+                    )}
                     {step === 2 &&
                         "Masukkan 6 digit kode OTP yang kami kirim ke WhatsApp Anda."}
                     {step === 3 && "Akun GoKasir Anda siap digunakan."}
                 </p>
             </div>
+            {step === 1 && (
+                <div className="bg-white border mx-auto mt-6 p-1.5 rounded-full flex justify-center shadow-sm w-fit relative z-10">
+                    <button
+                        onClick={() => setActiveTab("owner")}
+                        className={`px-6 text-sm py-2 rounded-full font-semibold transition-all duration-200 ${
+                            activeTab === "owner"
+                                ? "bg-brand-50 text-brand-600 shadow-sm border border-brand-100"
+                                : "bg-transparent text-gray-500 hover:text-brand-500 hover:bg-gray-50 border border-transparent"
+                        }`}
+                    >
+                        Owner Bisnis
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("sales")}
+                        className={`px-6 text-sm py-2 rounded-full font-semibold transition-all duration-200 ${
+                            activeTab === "sales"
+                                ? "bg-brand-50 text-brand-600 shadow-sm border border-brand-100"
+                                : "bg-transparent text-gray-500 hover:text-brand-500 hover:bg-gray-50 border border-transparent"
+                        }`}
+                    >
+                        Sales Marketing
+                    </button>
+                </div>
+            )}
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
                 <div className="bg-white py-8 px-4 shadow-xl shadow-brand-500/5 sm:rounded-2xl sm:px-10 border border-gray-100 relative overflow-hidden">
@@ -201,9 +330,9 @@ export default function Register() {
                         </div>
                     )}
 
-                    {step === 1 && (
+                    {step === 1 && activeTab === "owner" && (
                         <form
-                            className="space-y-5 relative"
+                            className="space-y-5 relative animate-in fade-in duration-300"
                             onSubmit={handleRegisterSubmit}
                         >
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -472,6 +601,39 @@ export default function Register() {
                                     )}
                                 </div>
                             </div>
+                            {loadingPackages && (
+                                <p className="text-sm text-brand-500 font-semibold mb-4">Memuat paket aktivasi...</p>
+                            )}
+                            
+                            {activationPackages.length > 0 && (
+                                <div className="space-y-1 mb-4">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        Paket Aktivasi <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <select
+                                            name="pricing_id"
+                                            value={formData.pricing_id}
+                                            onChange={handleInputChange}
+                                            required
+                                            className="w-full appearance-none rounded-xl border border-gray-300 px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-all text-sm pr-10"
+                                        >
+                                            <option value="" disabled>-- Pilih Paket Aktivasi --</option>
+                                            {activationPackages.map((pkg) => (
+                                                <option key={pkg.id} value={pkg.id}>
+                                                    {pkg.name} - Rp {pkg.effective_price.toLocaleString('id-ID')}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                                            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                        </div>
+                                    </div>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        Paket ini akan disimpan sebagai tagihan dan dapat Anda bayar nanti di dalam aplikasi GoKasir.
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="pt-4">
                                 <button
@@ -528,6 +690,177 @@ export default function Register() {
                         </form>
                     )}
 
+                    {step === 1 && activeTab === "sales" && (
+                        <form
+                            className="space-y-5 relative animate-in fade-in duration-300"
+                            onSubmit={handleRegisterSalesSubmit}
+                        >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                {/* Nama Sales */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        Nama Lengkap{" "}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        required
+                                        value={formDataSales.name}
+                                        onChange={handleInputSalesChange}
+                                        className={`w-full appearance-none rounded-xl border ${errors.name ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-brand-500 focus:ring-brand-500"} px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all text-sm`}
+                                        placeholder="Nama lengkap Anda"
+                                    />
+                                    {errors.name && (
+                                        <p className="mt-1.5 text-xs text-red-600 font-medium">
+                                            {errors.name[0]}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* No. WhatsApp */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        No. WhatsApp{" "}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        required
+                                        value={formDataSales.phone}
+                                        onChange={handleInputSalesChange}
+                                        className={`w-full appearance-none rounded-xl border ${errors.phone ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-brand-500 focus:ring-brand-500"} px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all text-sm`}
+                                        placeholder="081234567890"
+                                    />
+                                    {errors.phone && (
+                                        <p className="mt-1.5 text-xs text-red-600 font-medium">
+                                            {errors.phone[0]}
+                                        </p>
+                                    )}
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        OTP akan dikirim ke nomor ini
+                                    </p>
+                                </div>
+
+                                {/* Email */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        Email (Opsional)
+                                    </label>
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formDataSales.email}
+                                        onChange={handleInputSalesChange}
+                                        className={`w-full appearance-none rounded-xl border ${errors.email ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-brand-500 focus:ring-brand-500"} px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all text-sm`}
+                                        placeholder="email@sales.com"
+                                    />
+                                    {errors.email && (
+                                        <p className="mt-1.5 text-xs text-red-600 font-medium">
+                                            {errors.email[0]}
+                                        </p>
+                                    )}
+                                </div>
+                                {/* Password */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        Kata Sandi{" "}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        required
+                                        minLength="6"
+                                        value={formDataSales.password}
+                                        onChange={handleInputSalesChange}
+                                        className={`w-full appearance-none rounded-xl border ${errors.password ? "border-red-300 focus:border-red-500 focus:ring-red-500" : "border-gray-300 focus:border-brand-500 focus:ring-brand-500"} px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all text-sm`}
+                                        placeholder="Minimal 6 karakter"
+                                    />
+                                    {errors.password && (
+                                        <p className="mt-1.5 text-xs text-red-600 font-medium">
+                                            {errors.password[0]}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Konfirmasi Password */}
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                        Ulangi Kata Sandi{" "}
+                                        <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="password"
+                                        name="password_confirmation"
+                                        required
+                                        minLength="6"
+                                        value={
+                                            formDataSales.password_confirmation
+                                        }
+                                        onChange={handleInputSalesChange}
+                                        className={`w-full appearance-none rounded-xl border border-gray-300 focus:border-brand-500 focus:ring-brand-500 px-4 py-3 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-opacity-20 transition-all text-sm`}
+                                        placeholder="Ulangi sandi"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-4">
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="w-full flex justify-center items-center py-3.5 px-4 border border-transparent rounded-xl shadow-lg shadow-brand-500/20 text-sm font-bold text-white bg-brand-500 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {processing ? (
+                                        <>
+                                            <svg
+                                                className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                ></circle>
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                ></path>
+                                            </svg>{" "}
+                                            Memproses...
+                                        </>
+                                    ) : (
+                                        "Daftar Sebagai Sales Marketing"
+                                    )}
+                                </button>
+                            </div>
+
+                            <p className="text-xs text-center text-gray-500 mt-4">
+                                Dengan mendaftar, Anda menyetujui{" "}
+                                <a
+                                    href="#"
+                                    className="font-semibold text-brand-500"
+                                >
+                                    Syarat & Ketentuan
+                                </a>{" "}
+                                serta{" "}
+                                <a
+                                    href="#"
+                                    className="font-semibold text-brand-500"
+                                >
+                                    Kebijakan Privasi
+                                </a>{" "}
+                                kami.
+                            </p>
+                        </form>
+                    )}
+
                     {step === 2 && (
                         <form className="space-y-6" onSubmit={handleOtpSubmit}>
                             <div className="bg-brand-50/50 rounded-xl p-5 border border-brand-100 text-center mb-6">
@@ -535,7 +868,9 @@ export default function Register() {
                                     Kode OTP telah dikirim ke WhatsApp:
                                 </span>
                                 <span className="block text-lg font-bold text-gray-900 tracking-wide">
-                                    {formData.phone}
+                                    {activeTab === "owner"
+                                        ? formData.phone
+                                        : formDataSales.phone}
                                 </span>
                             </div>
 
@@ -609,9 +944,9 @@ export default function Register() {
                                 Selamat Bergabung!
                             </h3>
                             <p className="text-gray-600 mb-8 max-w-sm mx-auto">
-                                Akun bisnis Anda telah berhasil diverifikasi.
-                                Silakan download aplikasi GoKasir untuk mulai
-                                mengelola bisnis Anda.
+                                {activeTab === "owner"
+                                    ? "Akun bisnis Anda telah berhasil diverifikasi. Silakan download aplikasi GoKasir untuk mulai mengelola bisnis Anda."
+                                    : "Akun Sales Anda telah berhasil diverifikasi. Akun Anda saat ini sedang dalam peninjauan admin. Kami akan menghubungi Anda setelah disetujui."}
                             </p>
 
                             <a

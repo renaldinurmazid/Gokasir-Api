@@ -16,17 +16,32 @@ class Tenant extends Model
         'phone',
         'subscription_plan',
         'status',
+        'is_activated',
         'expired_at',
         'tax_rate',
         'token_balance',
         'token_lifetime_used',
         'token_lifetime_topup',
         'harga_token',
+        'qris',
+    ];
+
+    protected $appends = [
+        'qris_url',
     ];
 
     protected $casts = [
         'harga_token' => 'float',
+        'is_activated' => 'boolean',
     ];
+
+    public function getQrisUrlAttribute()
+    {
+        if ($this->qris) {
+            return asset('storage/' . $this->qris);
+        }
+        return null;
+    }
 
     public function stores()
     {

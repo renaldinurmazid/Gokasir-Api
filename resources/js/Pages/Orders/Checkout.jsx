@@ -612,8 +612,8 @@ export default function Checkout({ tableCode, table }) {
                         <h3 className="font-bold text-gray-900 text-sm">
                             Metode Pembayaran
                         </h3>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
+                        <div className="grid grid-cols-1 gap-3">
+                            {/* <button
                                 onClick={() =>
                                     handlePaymentSelection("cashless")
                                 }
@@ -627,17 +627,17 @@ export default function Checkout({ tableCode, table }) {
                                 <span className="text-xs font-bold">
                                     Pembayaran Online
                                 </span>
-                            </button>
+                            </button> */}
                             <button
                                 onClick={() => handlePaymentSelection("cash")}
-                                className={`flex items-center justify-center gap-2 py-1 rounded-xl border transition-all ${formData.payment_type === "cash" ? "border-[#EF5350] bg-red-50 text-[#EF5350]" : "border-gray-200 bg-white text-gray-600"}`}
+                                className={`flex items-center justify-start px-2 gap-2 py-1 rounded-xl border transition-all ${formData.payment_type === "cash" ? "border-[#EF5350] bg-red-50 text-[#EF5350]" : "border-gray-200 bg-white text-gray-600"}`}
                             >
                                 <img
                                     src="/illustration/cashier.svg"
                                     alt=""
-                                    className="w-16 h-16"
+                                    className="w-12 h-12"
                                 />
-                                <span className="text-xs font-bold">
+                                <span className="text-sm font-bold">
                                     Bayar di Kasir
                                 </span>
                             </button>
@@ -664,7 +664,13 @@ export default function Checkout({ tableCode, table }) {
                                             []
                                         ).map((ch, chIdx) => {
                                             const code = ch.Code || ch.code;
-                                            const name = ch.Name || ch.name;
+                                            let name = ch.Name || ch.name;
+                                            if (
+                                                name === "QRIS Dynamic NOBU" ||
+                                                code === "mpm"
+                                            ) {
+                                                name = "QRIS";
+                                            }
                                             const isSelected =
                                                 formData.payment_method ===
                                                     (cat.Code || cat.code) &&
@@ -683,9 +689,16 @@ export default function Checkout({ tableCode, table }) {
                                                     }
                                                     className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${isSelected ? "border-[#EF5350] bg-red-50/30" : "border-gray-100 hover:bg-gray-50"}`}
                                                 >
-                                                    <span className="text-xs font-bold text-gray-700">
-                                                        {name}
-                                                    </span>
+                                                    <div className="flex items-center gap-3">
+                                                        <img
+                                                            src={ch.Logo}
+                                                            alt={name}
+                                                            className="w-10"
+                                                        />
+                                                        <span className="text-xs font-bold text-gray-700">
+                                                            {name}
+                                                        </span>
+                                                    </div>
                                                     <div
                                                         className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isSelected ? "border-[#EF5350]" : "border-gray-300"}`}
                                                     >
