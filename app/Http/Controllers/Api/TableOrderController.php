@@ -57,7 +57,7 @@ class TableOrderController extends BaseApiController
     public function show(TableOrder $tableOrder)
     {
         abort_if($tableOrder->tenant_id !== $this->tenantId(), 403);
-        
+
         return $this->ok($tableOrder->load('table', 'items.product', 'session', 'confirmedBy'));
     }
 
@@ -112,9 +112,9 @@ class TableOrderController extends BaseApiController
     {
         abort_if($tableOrder->tenant_id !== $this->tenantId(), 403);
 
-        if (!$tableOrder->isPending()) {
-            return $this->fail('Hanya pesanan berstatus pending yang dapat diproses pembayarannya.', 422);
-        }
+        // if (!$tableOrder->isPending()) {
+        //     return $this->fail('Hanya pesanan berstatus pending yang dapat diproses pembayarannya.', 422);
+        // }
 
         if ($tableOrder->isPaid()) {
             return $this->fail('Pesanan ini sudah dibayar.', 422);
@@ -154,7 +154,7 @@ class TableOrderController extends BaseApiController
                 'payment_method'  => $request->payment_method,
                 'payment_status'  => 'paid',
                 'notes'           => 'Order dari Meja: ' . $tableOrder->table->name . ' | ' . $tableOrder->order_number,
-                'transaction_date'=> now(),
+                'transaction_date' => now(),
                 'created_at'      => now(),
             ]);
 
@@ -217,14 +217,13 @@ class TableOrderController extends BaseApiController
             );
 
             DB::commit();
-            
+
             return $this->ok([
                 'sale'         => $sale->load('items.product'),
                 'change'       => $change,
                 'table_name'   => $tableOrder->table->name,
                 'order_number' => $tableOrder->order_number,
             ], 'Pembayaran berhasil diproses.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->fail('Gagal memproses pembayaran: ' . $e->getMessage(), 500);
@@ -321,7 +320,7 @@ class TableOrderController extends BaseApiController
             $tableOrder->update([
                 'subtotal'   => $subtotal,
                 'tax_amount' => $taxAmount,
-                'grand_total'=> $grandTotal,
+                'grand_total' => $grandTotal,
                 'notes'      => $request->notes ?? $tableOrder->notes,
             ]);
 
