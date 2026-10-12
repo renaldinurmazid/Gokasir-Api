@@ -121,6 +121,7 @@ class ReportController extends BaseApiController
         $data = Stock::where('stocks.store_id', $storeId)
             ->where('stocks.tenant_id', $this->tenantId())
             ->join('products', 'stocks.product_id', '=', 'products.id')
+            ->whereNull('products.deleted_at')
             ->select(
                 'products.id',
                 'products.name',

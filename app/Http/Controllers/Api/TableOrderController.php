@@ -270,7 +270,7 @@ class TableOrderController extends BaseApiController
 
         $request->validate([
             'items'              => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => 'required|exists:products,id,deleted_at,NULL',
             'items.*.qty'        => 'required|numeric|min:0.1',
             'items.*.notes'      => 'nullable|string',
             'notes'              => 'nullable|string',

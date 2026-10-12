@@ -37,7 +37,7 @@ class PurchaseReturnController extends BaseApiController
             'resolution'  => 'required|in:refund,debt_reduction',
             'reason'      => 'nullable|string',
             'items'       => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => 'required|exists:products,id,deleted_at,NULL',
             'items.*.qty'        => 'required|numeric|min:0.01',
             'items.*.price'      => 'required|numeric|min:0',
         ]);

@@ -73,7 +73,7 @@ class SaleController extends BaseApiController
             'discount_amount' => 'nullable|numeric|min:0',
             'tax_amount'     => 'nullable|numeric|min:0',
             'items'          => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => 'required|exists:products,id,deleted_at,NULL',
             'items.*.qty'        => 'required|numeric|min:0.01',
             'items.*.price'      => 'required|numeric|min:0',
             'items.*.discount'   => 'nullable|numeric|min:0',

@@ -105,7 +105,7 @@ class SupplierController extends BaseApiController
         abort_if($supplier->tenant_id !== $this->tenantId(), 403);
 
         $request->validate([
-            'product_id'     => 'required|exists:products,id',
+            'product_id'     => 'required|exists:products,id,deleted_at,NULL',
             'purchase_price' => 'required|numeric|min:0',
             'supplier_sku'   => 'nullable|string|max:100',
             'min_order_qty'  => 'nullable|integer|min:1',

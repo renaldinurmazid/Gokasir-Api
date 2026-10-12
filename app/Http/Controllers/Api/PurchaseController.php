@@ -40,7 +40,7 @@ class PurchaseController extends BaseApiController
             'paid_amount'     => 'required|numeric|min:0',
             'due_date'        => 'nullable|date',
             'items'           => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => 'required|exists:products,id,deleted_at,NULL',
             'items.*.qty'        => 'required|numeric|min:0.01',
             'items.*.price'      => 'required|numeric|min:0',
             'items.*.discount'   => 'nullable|numeric|min:0',

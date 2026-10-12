@@ -94,7 +94,7 @@ class PublicOrderController extends BaseApiController
             'payment_channel'     => 'required_if:payment_type,cashless|string',
             'notes'               => 'nullable|string',
             'items'               => 'required|array|min:1',
-            'items.*.product_id'  => 'required|exists:products,id',
+            'items.*.product_id'  => 'required|exists:products,id,deleted_at,NULL',
             'items.*.qty'         => 'required|numeric|min:0.5',
             'items.*.notes'       => 'nullable|string',
         ]);

@@ -30,7 +30,7 @@ class StockMovementController extends BaseApiController
     {
         $request->validate([
             'store_id'   => 'required|exists:stores,id',
-            'product_id' => 'required|exists:products,id',
+            'product_id' => 'required|exists:products,id,deleted_at,NULL',
             'type'       => 'required|in:in,out,adjustment',
             'qty'        => 'required|numeric|min:0.01',
             'notes'      => 'nullable|string',

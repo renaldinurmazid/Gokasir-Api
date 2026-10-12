@@ -15,6 +15,7 @@ class StockController extends BaseApiController
 
         $stocks = Stock::where('store_id', $storeId)
             ->where('tenant_id', $this->tenantId())
+            ->whereHas('product')
             ->with('product.category', 'product.unit', 'store')
             ->paginate(20);
 
