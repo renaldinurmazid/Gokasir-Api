@@ -28,8 +28,11 @@ class CustomerController extends BaseApiController
         ]);
 
         $customer = Customer::create(array_merge(
-            $request->only('name','phone','address','credit_limit'),
-            ['tenant_id' => $this->tenantId()]
+            $request->only('name','phone','address'),
+            [
+                'credit_limit' => $request->input('credit_limit') ?? 0,
+                'tenant_id'    => $this->tenantId(),
+            ]
         ));
 
         return $this->ok($customer, 'Pelanggan ditambahkan.', 201);
@@ -46,7 +49,19 @@ class CustomerController extends BaseApiController
     public function update(Request $request, Customer $customer)
     {
         abort_if($customer->tenant_id !== $this->tenantId(), 403);
-        $customer->update($request->only('name','phone','address','credit_limit'));
+        $request->validate([
+            'name'         => 'sometimes|required|string|max:100',
+            'phone'        => 'nullable|string|max:30',
+            'credit_limit' => 'nullable|numeric|min:0',
+        ]);
+
+        $data = $request->only('name','phone','address');
+        if ($request->has('credit_limit')) {
+            // Kolom NOT NULL default 0: kosong/null berarti tanpa batas kredit (0)
+            $data['credit_limit'] = $request->input('credit_limit') ?? 0;
+        }
+
+        $customer->update($data);
         return $this->ok($customer, 'Pelanggan diperbarui.');
     }
 
