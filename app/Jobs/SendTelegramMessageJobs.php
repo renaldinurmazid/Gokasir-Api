@@ -21,6 +21,14 @@ class SendTelegramMessageJobs implements ShouldQueue
     }
 
     /**
+     * Escape karakter khusus Markdown Telegram untuk teks dinamis (nama, pesan error, dll).
+     */
+    public static function escape(?string $text): string
+    {
+        return preg_replace('/([_*`\[])/', '\\\\$1', (string) $text);
+    }
+
+    /**
      * Execute the job.
      */
     public function handle(): void

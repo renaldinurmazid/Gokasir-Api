@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Jobs\SendTelegramMessageJobs;
 use App\Models\TokenTopup;
 use App\Models\TableOrder;
 use App\Models\Sale;
@@ -99,11 +100,37 @@ class WebhookController extends BaseApiController
                 'token_amount'  => $topup->token_amount,
                 'tenant_id'     => $tenant->id,
             ]);
+
+            $this->notifyTelegram(
+                "💰 *Topup Token Berhasil*\n\n"
+                    . "🏢 *Bisnis:* " . SendTelegramMessageJobs::escape($tenant->business_name) . "\n"
+                    . "🧾 *No. Order:* " . SendTelegramMessageJobs::escape($topup->order_number) . "\n"
+                    . "🪙 *Token:* " . number_format($topup->token_amount, 0, ',', '.') . "\n"
+                    . "💵 *Harga:* Rp" . number_format($topup->price, 0, ',', '.') . "\n"
+                    . "💳 *Metode:* " . SendTelegramMessageJobs::escape(($topup->payment_method ?? '-') . ' / ' . ($topup->payment_channel ?? '-')) . "\n"
+                    . "📊 *Saldo:* " . number_format($topup->balance_before, 0, ',', '.') . " → " . number_format($topup->balance_after, 0, ',', '.') . "\n"
+                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+            );
         } else {
+            $failedStatus = null;
             if ($statusCode == 3 || strtolower($status) === 'expired' || strtolower($status) === 'kadaluarsa') {
-                $topup->update(['status' => 'expired']);
+                $failedStatus = 'expired';
             } elseif ($statusCode == -1 || $statusCode == 2 || strtolower($status) === 'gagal' || strtolower($status) === 'failed') {
-                $topup->update(['status' => 'failed']);
+                $failedStatus = 'failed';
+            }
+
+            if ($failedStatus) {
+                $topup->update(['status' => $failedStatus]);
+
+                $this->notifyTelegram(
+                    "⚠️ *Topup Token " . ($failedStatus === 'expired' ? 'Kadaluarsa' : 'Gagal') . "*\n\n"
+                        . "🏢 *Bisnis:* " . SendTelegramMessageJobs::escape($topup->tenant?->business_name) . "\n"
+                        . "🧾 *No. Order:* " . SendTelegramMessageJobs::escape($topup->order_number) . "\n"
+                        . "🪙 *Token:* " . number_format($topup->token_amount, 0, ',', '.') . "\n"
+                        . "💵 *Harga:* Rp" . number_format($topup->price, 0, ',', '.') . "\n"
+                        . "📝 *Status iPaymu:* " . SendTelegramMessageJobs::escape((string) $status) . "\n"
+                        . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+                );
             }
         }
 
@@ -147,6 +174,7 @@ class WebhookController extends BaseApiController
 
             if (!$tenant->hasToken()) {
                 Log::channel('ipaymu')->warning('Token habis saat webhook order', ['order' => $sid]);
+                $this->notifyOrderPaymentFailed($tenant, $order, 'Saldo token habis (pembayaran sudah diterima dari customer)');
                 return response()->json(['status' => 'token_empty'], 200);
             }
 
@@ -214,18 +242,23 @@ class WebhookController extends BaseApiController
                 $order->session->update(['status' => 'paid', 'closed_at' => now()]);
 
                 // Potong token
-                $this->tokenService->deductForSale(
+                $tokenDeducted = $this->tokenService->deductForSale(
                     $tenant,
                     $sale->id,
                     $order->store_id,
                     $cashierId
                 );
 
+                if (!$tokenDeducted) {
+                    $this->notifyOrderPaymentFailed($tenant, $order, 'Token gagal dipotong (saldo tidak mencukupi), penjualan tetap tercatat');
+                }
+
                 DB::commit();
                 Log::channel('ipaymu')->info('Order payment SUCCESS', ['order' => $order->order_number, 'sale_id' => $sale->id]);
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::channel('ipaymu')->error('Gagal proses order webhook', ['error' => $e->getMessage()]);
+                $this->notifyOrderPaymentFailed($tenant, $order, $e->getMessage());
                 return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
             }
         } else {
@@ -237,5 +270,27 @@ class WebhookController extends BaseApiController
         }
 
         return response()->json(['status' => 'ok']);
+    }
+
+    private function notifyOrderPaymentFailed($tenant, TableOrder $order, string $reason): void
+    {
+        $this->notifyTelegram(
+            "❌ *Transaksi Gagal (Order Meja Cashless)*\n\n"
+                . "🏢 *Bisnis:* " . SendTelegramMessageJobs::escape($tenant->business_name) . "\n"
+                . "🧾 *No. Order:* " . SendTelegramMessageJobs::escape($order->order_number) . "\n"
+                . "🏪 *Store ID:* " . $order->store_id . "\n"
+                . "💵 *Total:* Rp" . number_format($order->grand_total, 0, ',', '.') . "\n"
+                . "📝 *Alasan:* " . SendTelegramMessageJobs::escape($reason) . "\n"
+                . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+        );
+    }
+
+    private function notifyTelegram(string $text): void
+    {
+        try {
+            dispatch(new SendTelegramMessageJobs($text));
+        } catch (\Exception $e) {
+            Log::error("Failed to send Telegram notification: " . $e->getMessage());
+        }
     }
 }

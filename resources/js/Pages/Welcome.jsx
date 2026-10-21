@@ -948,7 +948,7 @@ export default function Welcome() {
                             </div>
                             <div className="pricing-header">
                                 <span className="pricing-tier">
-                                    Gratis 500 Token Awal
+                                    Gratis 25 Token Awal
                                 </span>
                                 <div className="pricing-price">Gratis</div>
                             </div>
@@ -966,7 +966,7 @@ export default function Welcome() {
                                     >
                                         <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    Gratis 500 token transaksi untuk pelanggan
+                                    Gratis 25 token transaksi untuk pelanggan
                                     baru
                                 </li>
                                 <li className="pricing-feature-item">
@@ -997,7 +997,7 @@ export default function Welcome() {
                                     >
                                         <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    Setelah 500 token, hanya Rp 100 / transaksi
+                                    Setelah 25 token, hanya Rp 100 / transaksi
                                 </li>
                                 <li className="pricing-feature-item">
                                     <svg
@@ -1115,7 +1115,7 @@ export default function Welcome() {
                                         fontSize: "1.05rem",
                                     }}
                                 >
-                                    Mulai Sekarang - Gratis 500 Token
+                                    Mulai Sekarang - Gratis 25 Token
                                 </a>
                             </div>
                         </div>

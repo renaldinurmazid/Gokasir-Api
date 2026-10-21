@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Jobs\SendTelegramMessageJobs;
 use App\Models\TokenTopup;
 use App\Models\TokenPricing;
 use App\Services\IPaymuService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class TokenTopupController extends BaseApiController
@@ -128,8 +130,31 @@ class TokenTopupController extends BaseApiController
             ]);
         } catch (\Exception $e) {
             $topup->update(['status' => 'failed']);
+            $this->notifyTelegram(
+                "⚠️ *Topup Token Gagal Dibuat*\n\n"
+                    . "🏢 *Bisnis:* " . SendTelegramMessageJobs::escape($tenant->business_name) . "\n"
+                    . "👤 *User:* " . SendTelegramMessageJobs::escape(auth()->user()->name) . "\n"
+                    . "🧾 *No. Order:* " . SendTelegramMessageJobs::escape($orderNumber) . "\n"
+                    . "🪙 *Token:* " . number_format($tokenAmount, 0, ',', '.') . "\n"
+                    . "💵 *Harga:* Rp" . number_format($totalPrice, 0, ',', '.') . "\n"
+                    . "📝 *Alasan:* " . SendTelegramMessageJobs::escape($e->getMessage()) . "\n"
+                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+            );
             return $this->fail('Gagal membuat pembayaran: ' . $e->getMessage(), 500);
         }
+
+        $this->notifyTelegram(
+            "🛒 *Order Topup Token Baru*\n\n"
+                . "🏢 *Bisnis:* " . SendTelegramMessageJobs::escape($tenant->business_name) . "\n"
+                . "👤 *User:* " . SendTelegramMessageJobs::escape(auth()->user()->name) . "\n"
+                . "📞 *No. HP:* " . auth()->user()->phone . "\n"
+                . "🧾 *No. Order:* " . SendTelegramMessageJobs::escape($topup->order_number) . "\n"
+                . "📦 *Paket:* " . SendTelegramMessageJobs::escape($pricing->name) . "\n"
+                . "🪙 *Token:* " . number_format($tokenAmount, 0, ',', '.') . "\n"
+                . "💵 *Harga:* Rp" . number_format($totalPrice, 0, ',', '.') . "\n"
+                . "💳 *Metode:* " . SendTelegramMessageJobs::escape($topup->payment_method . ' / ' . $topup->payment_channel) . "\n"
+                . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+        );
 
         return $this->ok([
             'order_number'    => $topup->order_number,
@@ -186,5 +211,14 @@ class TokenTopupController extends BaseApiController
             'token_amount' => $topup->token_amount,
             'paid_at'      => $topup->paid_at,
         ]);
+    }
+
+    private function notifyTelegram(string $text): void
+    {
+        try {
+            dispatch(new SendTelegramMessageJobs($text));
+        } catch (\Exception $e) {
+            Log::error("Failed to send Telegram notification: " . $e->getMessage());
+        }
     }
 }

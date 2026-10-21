@@ -182,6 +182,7 @@ class SaleController extends BaseApiController
 
             if (!$tokenDeducted) {
                 DB::rollBack();
+                $this->notifyTransactionFailed($tenant, $request, 'Saldo token tidak mencukupi saat pemotongan token');
                 return $this->fail('Saldo token tidak mencukupi.', 402);
             }
             // ─────────────────────────────────────────────────────────
@@ -218,7 +219,27 @@ class SaleController extends BaseApiController
             );
         } catch (\Exception $e) {
             DB::rollBack();
+            $this->notifyTransactionFailed($tenant, $request, $e->getMessage());
             return $this->fail('Transaksi gagal: ' . $e->getMessage(), 500);
+        }
+    }
+
+    private function notifyTransactionFailed($tenant, Request $request, string $reason): void
+    {
+        try {
+            $user = auth()->user();
+            dispatch(new SendTelegramMessageJobs(
+                "❌ *Transaksi Gagal*\n\n"
+                    . "🏢 *Bisnis:* " . SendTelegramMessageJobs::escape($tenant->business_name) . "\n"
+                    . "👤 *Kasir:* " . SendTelegramMessageJobs::escape($user->name) . "\n"
+                    . "📞 *No. HP Kasir:* " . $user->phone . "\n"
+                    . "🏪 *Store ID:* " . $request->store_id . "\n"
+                    . "💳 *Metode Bayar:* " . ($request->payment_method ?? '-') . "\n"
+                    . "📝 *Alasan:* " . SendTelegramMessageJobs::escape($reason) . "\n"
+                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+            ));
+        } catch (\Exception $e) {
+            Log::error("Failed to send Telegram notification: " . $e->getMessage());
         }
     }
 

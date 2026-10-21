@@ -10,8 +10,10 @@ use App\Models\Stock;
 use App\Models\StockMovement;
 use App\Models\Product;
 use App\Services\TokenService;
+use App\Jobs\SendTelegramMessageJobs;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TableOrderController extends BaseApiController
 {
@@ -128,6 +130,7 @@ class TableOrderController extends BaseApiController
         // Cek token
         $tenant = auth()->user()->tenant;
         if (!$tenant->hasToken()) {
+            $this->notifyPaymentFailed($tenant, $tableOrder, 'Saldo token habis');
             return $this->fail('Saldo token habis. Silakan topup token.', 402);
         }
 
@@ -209,12 +212,18 @@ class TableOrderController extends BaseApiController
             ]);
 
             // Potong token
-            $this->tokenService->deductForSale(
+            $tokenDeducted = $this->tokenService->deductForSale(
                 $tenant,
                 $sale->id,
                 $tableOrder->store_id,
                 auth()->id()
             );
+
+            if (!$tokenDeducted) {
+                DB::rollBack();
+                $this->notifyPaymentFailed($tenant, $tableOrder, 'Saldo token tidak mencukupi saat pemotongan token');
+                return $this->fail('Saldo token tidak mencukupi.', 402);
+            }
 
             DB::commit();
 
@@ -226,7 +235,27 @@ class TableOrderController extends BaseApiController
             ], 'Pembayaran berhasil diproses.');
         } catch (\Exception $e) {
             DB::rollBack();
+            $this->notifyPaymentFailed($tenant, $tableOrder, $e->getMessage());
             return $this->fail('Gagal memproses pembayaran: ' . $e->getMessage(), 500);
+        }
+    }
+
+    private function notifyPaymentFailed($tenant, TableOrder $tableOrder, string $reason): void
+    {
+        try {
+            $user = auth()->user();
+            dispatch(new SendTelegramMessageJobs(
+                "❌ *Transaksi Gagal (Order Meja)*\n\n"
+                    . "🏢 *Bisnis:* " . SendTelegramMessageJobs::escape($tenant->business_name) . "\n"
+                    . "👤 *Kasir:* " . SendTelegramMessageJobs::escape($user->name) . "\n"
+                    . "📞 *No. HP Kasir:* " . $user->phone . "\n"
+                    . "🧾 *No. Order:* " . SendTelegramMessageJobs::escape($tableOrder->order_number) . "\n"
+                    . "🏪 *Store ID:* " . $tableOrder->store_id . "\n"
+                    . "📝 *Alasan:* " . SendTelegramMessageJobs::escape($reason) . "\n"
+                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+            ));
+        } catch (\Exception $e) {
+            Log::error("Failed to send Telegram notification: " . $e->getMessage());
         }
     }
 

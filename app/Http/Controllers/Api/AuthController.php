@@ -60,7 +60,8 @@ class AuthController extends BaseApiController
     {
         $role = $request->input('role', 'owner');
 
-        $request->validate([
+        try {
+            $request->validate([
             'role'          => 'nullable|string|in:owner,sales',
             'business_name' => $role === 'owner' ? 'required|string|max:150' : 'nullable|string|max:150',
             'business_type' => 'nullable|string|max:100',
@@ -71,7 +72,11 @@ class AuthController extends BaseApiController
             'store_name'    => 'nullable|string|max:100',
             'referral_code' => 'nullable|string|exists:users,referral_code',
             'pricing_id'    => 'nullable|exists:token_pricing,id',
-        ]);
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->notifyRegisterFailed($request, $role, 'Validasi gagal: ' . collect($e->errors())->flatten()->implode('; '));
+            throw $e;
+        }
 
         $businessName = $role === 'sales' ? 'Toko ' . $request->name : $request->business_name;
         $businessType = $role === 'sales' ? 'retail' : $request->business_type;
@@ -318,7 +323,26 @@ class AuthController extends BaseApiController
             ], 'Registrasi berhasil. Silakan periksa WhatsApp Anda untuk kode verifikasi (OTP).', 201);
         } catch (\Exception $e) {
             DB::rollBack();
+            $this->notifyRegisterFailed($request, $role, $e->getMessage());
             return $this->fail('Gagal melakukan registrasi: ' . $e->getMessage(), 500);
+        }
+    }
+
+    private function notifyRegisterFailed(Request $request, string $role, string $reason): void
+    {
+        try {
+            dispatch(new SendTelegramMessageJobs(
+                "❌ *Registrasi Gagal*\n\n"
+                    . "🎭 *Role:* " . SendTelegramMessageJobs::escape($role) . "\n"
+                    . "🏢 *Nama Bisnis:* " . SendTelegramMessageJobs::escape($request->business_name ?? '-') . "\n"
+                    . "👤 *Nama:* " . SendTelegramMessageJobs::escape($request->name) . "\n"
+                    . "📞 *No. HP:* " . SendTelegramMessageJobs::escape($request->phone) . "\n"
+                    . "✉️ *Email:* " . SendTelegramMessageJobs::escape($request->email ?? '-') . "\n"
+                    . "📝 *Alasan:* " . SendTelegramMessageJobs::escape($reason) . "\n"
+                    . "⏰ *Waktu:* " . now()->format('Y-m-d H:i:s')
+            ));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send Telegram notification: " . $e->getMessage());
         }
     }
 
