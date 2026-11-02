@@ -1,58 +1,113 @@
-import { Head, Link, router } from '@inertiajs/react'
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { Building2, Store, Users, Wallet, TrendingUp, TrendingDown, UserPlus, Activity, UserX, PauseCircle } from 'lucide-react'
+import { useId, useState } from 'react'
+import { Head, Link, router, usePage } from '@inertiajs/react'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { CalendarDays, Download, TrendingDown, TrendingUp } from 'lucide-react'
 import AdminLayout, { PageHeader } from '@/components/admin/AdminLayout'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent,
 } from '@/components/ui/chart'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 import { compactNumber, number, rupiah } from '@/lib/format'
-import { useState } from 'react'
 
-function Growth({ pct, thisMonth }) {
-  if (pct === null || pct === undefined) {
-    return <span>{thisMonth > 0 ? `+${number(thisMonth)} bulan ini` : 'Belum ada tambahan bulan ini'}</span>
-  }
-  const up = pct >= 0
-  const Icon = up ? TrendingUp : TrendingDown
+// Warna penanda kategori (slot kategorikal tervalidasi + warna merek)
+const C = {
+  brand: 'hsl(var(--primary))',
+  yellow: '#eda100',
+  violet: '#6250d6',
+  aqua: '#1baf7a',
+}
+
+function Panel({ title, action, children, className }) {
   return (
-    <span className="flex items-center gap-1">
-      <Icon className={cn('h-3.5 w-3.5', up ? 'text-emerald-600' : 'text-destructive')} />
-      <span className={up ? 'text-emerald-700' : 'text-destructive'}>{up ? '+' : ''}{pct}%</span>
-      <span>· +{number(thisMonth)} bulan ini</span>
+    <Card className={cn('rounded-3xl p-6', className)}>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </Card>
+  )
+}
+
+function Pill({ children, tone = 'neutral', className }) {
+  const tones = {
+    neutral: 'border-border bg-background text-foreground/70',
+    up: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    down: 'border-red-200 bg-red-50 text-red-700',
+  }
+  return (
+    <span className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium', tones[tone], className)}>
+      {children}
     </span>
   )
 }
 
-function StatCard({ title, value, icon: Icon, children, href }) {
-  const body = (
-    <Card className={cn(href && 'transition-colors hover:bg-muted/50')}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold tabular-nums">{value}</div>
-        <div className="mt-1 text-xs text-muted-foreground">{children}</div>
-      </CardContent>
-    </Card>
+function GrowthPill({ pct, thisMonth }) {
+  if (pct === null || pct === undefined) {
+    return <Pill>{thisMonth > 0 ? `+${number(thisMonth)} bulan ini` : 'Belum ada tambahan'}</Pill>
+  }
+  const up = pct >= 0
+  const Icon = up ? TrendingUp : TrendingDown
+  return (
+    <Pill tone={up ? 'up' : 'down'}>
+      <Icon className="h-3.5 w-3.5" /> {up ? '+' : ''}{pct}%
+    </Pill>
   )
-  return href ? <Link href={href}>{body}</Link> : body
 }
 
-function PeriodCard({ label, count, revenue }) {
+function Tile({ color, label, value, unit, aside, sub, href }) {
+  const body = (
+    <div className={cn('rounded-2xl border bg-muted/40 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]', href && 'transition-colors hover:bg-muted/70')}>
+      <div className="flex items-center gap-2 text-[15px] text-foreground/80">
+        <span className="h-3 w-3 rounded-[3px]" style={{ background: color }} />
+        {label}
+      </div>
+      <div className="mt-4 flex flex-wrap items-end justify-between gap-2">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[32px] font-semibold leading-none tracking-tight tabular-nums">{value}</span>
+          {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
+        </div>
+        {aside}
+      </div>
+      {sub && <div className="mt-2 text-xs text-muted-foreground">{sub}</div>}
+    </div>
+  )
+  return href ? <Link href={href} className="block">{body}</Link> : body
+}
+
+/** Batang proporsi bergaris-garis dengan label persen di atas tiap segmen. */
+function SegmentedBar({ segments }) {
+  const total = segments.reduce((s, x) => s + x.value, 0)
+  const visible = segments.filter((s) => s.value > 0)
+  if (total === 0) return <div className="h-14 rounded-xl bg-muted" />
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription>{label}</CardDescription>
-        <CardTitle className="text-2xl tabular-nums">{rupiah(revenue)}</CardTitle>
-      </CardHeader>
-      <CardContent className="text-sm text-muted-foreground">{number(count)} transaksi</CardContent>
-    </Card>
+    <div className="flex gap-1.5" role="img" aria-label={segments.map((s) => `${s.label} ${s.value}`).join(', ')}>
+      {visible.map((s) => {
+        const pct = (s.value / total) * 100
+        return (
+          <div key={s.key} style={{ flexGrow: s.value, flexBasis: 0, minWidth: 6 }}>
+            <div className="mb-1 h-5 truncate text-sm tabular-nums text-foreground/80">
+              {pct >= 9 ? `${Math.round(pct)}%` : ''}
+            </div>
+            <div
+              className="h-11"
+              style={{
+                borderTop: `2px solid ${s.color}`,
+                backgroundImage: `repeating-linear-gradient(90deg, ${s.color} 0 2.5px, transparent 2.5px 6px)`,
+                backgroundPosition: 'left bottom',
+                backgroundSize: '100% calc(100% - 2px)',
+                backgroundRepeat: 'no-repeat',
+              }}
+            />
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -63,56 +118,65 @@ const shortDate = (d) => {
 const longDate = (d) =>
   new Date(d + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })
 
-function TrendCard({ title, description, data, metrics }) {
-  const [key, setKey] = useState(metrics[0].key)
-  const metric = metrics.find((m) => m.key === key)
-  const config = { [key]: { label: metric.label, color: 'hsl(var(--chart-1))' } }
-  const Chart = metric.type === 'area' ? AreaChart : BarChart
+/** Grafik batang seri tunggal dengan gradasi merek. */
+function BarTrend({ data, dataKey, label, format, height = 260 }) {
+  const gid = useId().replace(/:/g, '')
+  const config = { [dataKey]: { label, color: C.brand } }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
-        </div>
+    <ChartContainer config={config} className="aspect-auto w-full" style={{ height }}>
+      <BarChart data={data} margin={{ left: 0, right: 4, top: 8 }} barCategoryGap="22%">
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--bar-from))" />
+            <stop offset="100%" stopColor="hsl(var(--bar-to))" />
+          </linearGradient>
+        </defs>
+        <CartesianGrid vertical={false} strokeDasharray="3 3" />
+        <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={10} minTickGap={22} tickFormatter={shortDate} />
+        <YAxis tickLine={false} axisLine={false} width={44} tickFormatter={compactNumber} />
+        <ChartTooltip
+          cursor={{ fill: 'hsl(var(--muted))', opacity: 0.6 }}
+          content={
+            <ChartTooltipContent
+              indicator="line"
+              labelFormatter={(_, p) => longDate(p[0].payload.date)}
+              formatter={(v) => (
+                <div className="flex w-full items-center justify-between gap-6">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-mono font-medium tabular-nums">{format(v)}</span>
+                </div>
+              )}
+            />
+          }
+        />
+        <Bar dataKey={dataKey} fill={`url(#${gid})`} radius={[8, 8, 3, 3]} maxBarSize={22} />
+      </BarChart>
+    </ChartContainer>
+  )
+}
+
+function TrendPanel({ title, headline, headlineSub, data, metrics }) {
+  const [key, setKey] = useState(metrics[0].key)
+  const metric = metrics.find((m) => m.key === key)
+
+  return (
+    <Panel
+      title={title}
+      action={
         <Tabs value={key} onValueChange={setKey}>
           <TabsList>
             {metrics.map((m) => <TabsTrigger key={m.key} value={m.key}>{m.label}</TabsTrigger>)}
           </TabsList>
         </Tabs>
-      </CardHeader>
-      <CardContent>
-        <ChartContainer config={config} className="aspect-auto h-[260px] w-full">
-          <Chart data={data} margin={{ left: 4, right: 8, top: 8 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} minTickGap={24} tickFormatter={shortDate} />
-            <YAxis tickLine={false} axisLine={false} width={48} tickFormatter={compactNumber} />
-            <ChartTooltip
-              cursor={metric.type === 'area'}
-              content={
-                <ChartTooltipContent
-                  indicator="line"
-                  labelFormatter={(_, p) => longDate(p[0].payload.date)}
-                  formatter={(v) => (
-                    <div className="flex w-full items-center justify-between gap-6">
-                      <span className="text-muted-foreground">{metric.label}</span>
-                      <span className="font-mono font-medium tabular-nums">{metric.format(v)}</span>
-                    </div>
-                  )}
-                />
-              }
-            />
-            {metric.type === 'area' ? (
-              <Area dataKey={key} type="monotone" stroke={`var(--color-${key})`} strokeWidth={2}
-                fill={`var(--color-${key})`} fillOpacity={0.15} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: 'hsl(var(--background))' }} />
-            ) : (
-              <Bar dataKey={key} fill={`var(--color-${key})`} radius={[4, 4, 0, 0]} maxBarSize={24} />
-            )}
-          </Chart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
+      }
+    >
+      <div className="mb-4">
+        <div className="text-[34px] font-semibold leading-none tracking-tight tabular-nums">{headline(key)}</div>
+        <p className="mt-2 text-sm text-muted-foreground">{headlineSub}</p>
+      </div>
+      <BarTrend data={data} dataKey={key} label={metric.label} format={metric.format} />
+    </Panel>
   )
 }
 
@@ -122,150 +186,183 @@ const growthConfig = {
   users_new:   { label: 'User',   color: 'hsl(var(--chart-3))' },
 }
 
+function exportCsv(daily, range) {
+  const head = ['tanggal', 'transaksi', 'omzet', 'topup_lunas', 'pendapatan_topup']
+  const rows = daily.map((d) => [d.date, d.transactions, d.revenue, d.topup_count, d.topup_revenue])
+  const csv = [head, ...rows].map((r) => r.join(',')).join('\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `gokasir-platform-${range}-hari.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function Dashboard({ stats }) {
   const { totals, tenants, sales, topups, daily, monthly, range } = stats
+  const admin = usePage().props.auth?.admin
+  const firstName = (admin?.name ?? '').split(' ')[0]
 
   const changeRange = (v) => router.get('/admin', { range: v }, { preserveState: true, preserveScroll: true, replace: true })
+
+  const segments = [
+    { key: 'active',    label: 'Aktif',               value: tenants.active,    color: C.aqua,   href: '/admin/tenants' },
+    { key: 'inactive',  label: 'Tidak aktif',         value: tenants.inactive,  color: C.yellow, href: '/admin/retention' },
+    { key: 'fresh',     label: 'Baru, belum transaksi', value: tenants.fresh,   color: C.violet },
+    { key: 'suspended', label: 'Suspended',           value: tenants.suspended, color: C.brand,  href: '/admin/tenants?status=suspended' },
+  ]
+
+  const topupRows = [
+    ['Hari ini', topups.today], ['Minggu ini', topups.week], ['Bulan ini', topups.month], ['Sepanjang waktu', topups.all],
+  ]
 
   return (
     <AdminLayout>
       <Head title="Dashboard" />
       <PageHeader
-        title="Dashboard"
-        description="Ringkasan seluruh platform. Hari, minggu, dan bulan dihitung dalam WIB."
+        title={firstName ? `Halo, ${firstName}` : 'Dashboard'}
+        description="Pantau, evaluasi, dan kembangkan bisnis SaaS GoKasir Anda."
         actions={
-          <Select value={String(range)} onValueChange={changeRange}>
-            <SelectTrigger className="w-[170px]" aria-label="Rentang grafik"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">7 hari terakhir</SelectItem>
-              <SelectItem value="30">30 hari terakhir</SelectItem>
-              <SelectItem value="90">90 hari terakhir</SelectItem>
-            </SelectContent>
-          </Select>
+          <>
+            <Select value={String(range)} onValueChange={changeRange}>
+              <SelectTrigger className="h-11 w-[200px] gap-2 rounded-xl shadow-sm" aria-label="Rentang grafik">
+                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 hari terakhir</SelectItem>
+                <SelectItem value="30">30 hari terakhir</SelectItem>
+                <SelectItem value="90">90 hari terakhir</SelectItem>
+              </SelectContent>
+            </Select>
+            {/* <Button className="h-11 rounded-xl px-5 shadow-sm" onClick={() => exportCsv(daily, range)}>
+              <Download className="h-4 w-4" /> Export CSV
+            </Button> */}
+          </>
         }
       />
 
-      {/* Total & pertumbuhan */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="Total Tenant" value={number(totals.tenants.total)} icon={Building2} href="/admin/tenants">
-          <Growth pct={totals.tenants.growth_pct} thisMonth={totals.tenants.this_month} />
-        </StatCard>
-        <StatCard title="Total Toko" value={number(totals.stores.total)} icon={Store}>
-          <Growth pct={totals.stores.growth_pct} thisMonth={totals.stores.this_month} />
-        </StatCard>
-        <StatCard title="Total User" value={number(totals.users.total)} icon={Users}>
-          <Growth pct={totals.users.growth_pct} thisMonth={totals.users.this_month} />
-        </StatCard>
-        <StatCard title="Pendapatan Top-up (Bulan Ini)" value={rupiah(topups.month.revenue)} icon={Wallet}>
-          Sepanjang waktu {rupiah(topups.all.revenue)}
-        </StatCard>
-      </section>
+      <div className="grid items-start gap-6 xl:grid-cols-[1.1fr_1fr]">
+        {/* ── Kolom kiri ── */}
+        <div className="space-y-6">
+          <Panel title="Analitik Platform">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Tile color={C.brand} label="Total Tenant" value={number(totals.tenants.total)} unit="tenant" href="/admin/tenants"
+                aside={<GrowthPill pct={totals.tenants.growth_pct} thisMonth={totals.tenants.this_month} />}
+                sub={`+${number(totals.tenants.this_month)} bulan ini`} />
+              <Tile color={C.yellow} label="Total Toko" value={number(totals.stores.total)} unit="toko"
+                aside={<GrowthPill pct={totals.stores.growth_pct} thisMonth={totals.stores.this_month} />}
+                sub={`+${number(totals.stores.this_month)} bulan ini`} />
+              <Tile color={C.violet} label="Total User" value={number(totals.users.total)} unit="user"
+                aside={<GrowthPill pct={totals.users.growth_pct} thisMonth={totals.users.this_month} />}
+                sub={`+${number(totals.users.this_month)} bulan ini · ${number(totals.sales_partners)} mitra sales tidak dihitung`} />
+              <Tile color={C.aqua} label="Top-up Bulan Ini" value={rupiah(topups.month.revenue)}
+                sub={`${number(topups.month.count)} top-up lunas · total ${rupiah(topups.all.revenue)}`} />
+            </div>
 
-      {/* Transaksi & omzet platform */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">Transaksi & omzet seluruh platform</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <PeriodCard label="Hari ini" {...sales.today} />
-          <PeriodCard label="Minggu ini" {...sales.week} />
-          <PeriodCard label="Bulan ini" {...sales.month} />
-        </div>
-      </section>
-
-      {/* Kesehatan tenant */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">Kesehatan tenant</h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Tenant Baru (30 hari)" value={number(tenants.new_30d)} icon={UserPlus}>
-            Mendaftar dalam 30 hari terakhir
-          </StatCard>
-          <StatCard title="Tenant Aktif" value={number(tenants.active)} icon={Activity}>
-            Ada transaksi dalam {tenants.active_days} hari terakhir
-          </StatCard>
-          <StatCard title="Tenant Tidak Aktif" value={number(tenants.inactive)} icon={UserX} href="/admin/retention">
-            Tanpa transaksi {tenants.active_days} hari · lihat daftar follow-up
-          </StatCard>
-          <StatCard title="Tenant Suspended" value={number(tenants.suspended)} icon={PauseCircle} href="/admin/tenants?status=suspended">
-            Akses dinonaktifkan
-          </StatCard>
-        </div>
-      </section>
-
-      {/* Grafik */}
-      <section className="grid gap-4 xl:grid-cols-2">
-        <TrendCard
-          title="Tren transaksi"
-          description={`Seluruh tenant, ${range} hari terakhir`}
-          data={daily}
-          metrics={[
-            { key: 'revenue', label: 'Omzet', type: 'area', format: rupiah },
-            { key: 'transactions', label: 'Jumlah transaksi', type: 'bar', format: number },
-          ]}
-        />
-        <TrendCard
-          title="Tren top-up token"
-          description={`Top-up berstatus lunas, ${range} hari terakhir`}
-          data={daily}
-          metrics={[
-            { key: 'topup_revenue', label: 'Pendapatan', type: 'bar', format: rupiah },
-            { key: 'topup_count', label: 'Jumlah top-up', type: 'bar', format: number },
-          ]}
-        />
-      </section>
-
-      <section className="grid gap-4 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Pertumbuhan per bulan</CardTitle>
-            <CardDescription>Tenant, toko, dan user baru dalam 12 bulan terakhir</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={growthConfig} className="aspect-auto h-[280px] w-full">
-              <BarChart data={monthly} margin={{ left: 4, right: 8, top: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} width={32} allowDecimals={false} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <ChartLegend content={<ChartLegendContent />} />
-                <Bar dataKey="tenants_new" fill="var(--color-tenants_new)" radius={[4, 4, 0, 0]} maxBarSize={14} />
-                <Bar dataKey="stores_new" fill="var(--color-stores_new)" radius={[4, 4, 0, 0]} maxBarSize={14} />
-                <Bar dataKey="users_new" fill="var(--color-users_new)" radius={[4, 4, 0, 0]} maxBarSize={14} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Pendapatan top-up</CardTitle>
-            <CardDescription>
-              {topups.pending > 0 ? `${number(topups.pending)} top-up menunggu pembayaran` : 'Top-up berstatus lunas'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Periode</TableHead>
-                  <TableHead className="text-right">Top-up</TableHead>
-                  <TableHead className="text-right">Pendapatan</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {[['Hari ini', topups.today], ['Minggu ini', topups.week], ['Bulan ini', topups.month], ['Semua', topups.all]].map(([l, t]) => (
-                  <TableRow key={l}>
-                    <TableCell className="font-medium">{l}</TableCell>
-                    <TableCell className="text-right tabular-nums">{number(t.count)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{rupiah(t.revenue)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="mt-7 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-[32px] font-semibold leading-none tabular-nums">{number(tenants.total)}</span>
+              <span className="text-sm text-muted-foreground">
+                Total tenant · {number(tenants.new_30d)} baru dalam 30 hari
+              </span>
+            </div>
+            <div className="mt-4"><SegmentedBar segments={segments} /></div>
+            <ul className="mt-4 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+              {segments.map((s) => {
+                const row = (
+                  <span className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: s.color }} />
+                    <span className="text-foreground/80">{s.label}</span>
+                    <span className="ml-auto font-medium tabular-nums">{number(s.value)}</span>
+                  </span>
+                )
+                return (
+                  <li key={s.key}>
+                    {s.href ? <Link href={s.href} className="block rounded-md hover:bg-muted/60">{row}</Link> : row}
+                  </li>
+                )
+              })}
+            </ul>
             <p className="mt-3 text-xs text-muted-foreground">
-              {number(topups.all.tokens)} token terjual sepanjang waktu · {number(totals.sales_partners)} mitra sales tidak dihitung sebagai tenant.
+              Aktif = ada transaksi dalam {tenants.active_days} hari terakhir. Tidak aktif = tanpa transaksi {tenants.active_days} hari dan sudah terdaftar lebih lama dari itu.
             </p>
-          </CardContent>
-        </Card>
-      </section>
+          </Panel>
+
+          <Panel title="Transaksi Seluruh Platform">
+            <div className="space-y-3">
+              {[['Hari ini', sales.today], ['Minggu ini', sales.week], ['Bulan ini', sales.month]].map(([label, s]) => (
+                <div key={label} className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border bg-background px-5 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                  <div className="w-28 text-[15px] text-muted-foreground">{label}</div>
+                  <div className="flex-1 text-2xl font-semibold tabular-nums tracking-tight">{rupiah(s.revenue)}</div>
+                  <Pill>{number(s.count)} transaksi</Pill>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">Hari, minggu (mulai Senin), dan bulan dihitung dalam WIB.</p>
+          </Panel>
+        </div>
+
+        {/* ── Kolom kanan ── */}
+        <div className="space-y-6">
+          <TrendPanel
+            title="Tren Transaksi"
+            data={daily}
+            headline={(k) => (k === 'revenue' ? rupiah(sales.month.revenue) : number(sales.month.count))}
+            headlineSub={`Bulan ini · grafik ${range} hari terakhir`}
+            metrics={[
+              { key: 'revenue', label: 'Omzet', format: rupiah },
+              { key: 'transactions', label: 'Transaksi', format: number },
+            ]}
+          />
+
+          <TrendPanel
+            title="Tren Top-up Token"
+            data={daily}
+            headline={(k) => (k === 'topup_revenue' ? rupiah(topups.month.revenue) : number(topups.month.count))}
+            headlineSub={
+              topups.pending > 0
+                ? `Bulan ini · ${number(topups.pending)} top-up menunggu pembayaran`
+                : `Bulan ini · grafik ${range} hari terakhir`
+            }
+            metrics={[
+              { key: 'topup_revenue', label: 'Pendapatan', format: rupiah },
+              { key: 'topup_count', label: 'Jumlah', format: number },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="grid items-start gap-6 xl:grid-cols-[1.1fr_1fr]">
+        <Panel title="Pertumbuhan per Bulan">
+          <ChartContainer config={growthConfig} className="aspect-auto h-[300px] w-full">
+            <BarChart data={monthly} margin={{ left: 0, right: 4, top: 8 }} barCategoryGap="24%">
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={10} />
+              <YAxis tickLine={false} axisLine={false} width={32} allowDecimals={false} />
+              <ChartTooltip cursor={{ fill: 'hsl(var(--muted))', opacity: 0.6 }} content={<ChartTooltipContent />} />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar dataKey="tenants_new" fill="var(--color-tenants_new)" radius={[6, 6, 2, 2]} maxBarSize={14} />
+              <Bar dataKey="stores_new" fill="var(--color-stores_new)" radius={[6, 6, 2, 2]} maxBarSize={14} />
+              <Bar dataKey="users_new" fill="var(--color-users_new)" radius={[6, 6, 2, 2]} maxBarSize={14} />
+            </BarChart>
+          </ChartContainer>
+        </Panel>
+
+        <Panel title="Pendapatan Top-up">
+          <div className="space-y-3">
+            {topupRows.map(([label, t]) => (
+              <div key={label} className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-2xl border bg-background px-5 py-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+                <div className="w-32 text-[15px] text-muted-foreground">{label}</div>
+                <div className="flex-1 text-xl font-semibold tabular-nums tracking-tight">{rupiah(t.revenue)}</div>
+                <Pill>{number(t.count)} top-up</Pill>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Hanya top-up berstatus lunas · {number(topups.all.tokens)} token terjual sepanjang waktu.
+          </p>
+        </Panel>
+      </div>
     </AdminLayout>
   )
 }

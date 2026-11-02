@@ -46,6 +46,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => fn () => ['admin' => ($a = $request->user('admin')) ? [
                 'id' => $a->id, 'name' => $a->name, 'email' => $a->email,
             ] : null],
+            // Badge sidebar: di-cache 5 menit agar tidak menghitung ulang di setiap halaman.
+            'navCounts' => fn () => $request->user('admin')
+                ? \Illuminate\Support\Facades\Cache::remember('admin:nav-counts', 300, fn () => app(\App\Services\Admin\PlatformStats::class)->navCounts())
+                : null,
             'flash' => fn () => [
                 'success'       => $request->session()->get('success'),
                 'error'         => $request->session()->get('error'),

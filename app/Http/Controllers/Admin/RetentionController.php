@@ -11,8 +11,7 @@ use Inertia\Inertia;
 /** Tenant yang lama tidak aktif — target follow-up / retensi. */
 class RetentionController extends Controller
 {
-    /** Aktivitas terakhir = transaksi terakhir; jika belum pernah transaksi, pakai tanggal daftar. */
-    private const LAST_ACTIVITY = 'COALESCE((SELECT MAX(s.transaction_date) FROM sales s WHERE s.tenant_id = tenants.id), tenants.created_at)';
+    private const LAST_ACTIVITY = Tenant::LAST_ACTIVITY_SQL;
 
     public function index(Request $request)
     {
@@ -22,7 +21,7 @@ class RetentionController extends Controller
         $cutoff = now()->subDays($days);
 
         $query = Tenant::query()->merchants()
-            ->where('status', 'active')
+            ->where('status', '!=', 'suspended')
             ->whereRaw(self::LAST_ACTIVITY . ' < ?', [$cutoff])
             ->with(['owner:id,tenant_id,name,phone,last_login'])
             ->withCount(['stores', 'products', 'sales'])
@@ -58,7 +57,7 @@ class RetentionController extends Controller
         });
 
         // Ringkasan per ambang, satu query.
-        $bucket = Tenant::query()->merchants()->where('status', 'active')
+        $bucket = Tenant::query()->merchants()->where('status', '!=', 'suspended')
             ->selectRaw('
                 COALESCE(SUM(' . self::LAST_ACTIVITY . ' < ?), 0) d14,
                 COALESCE(SUM(' . self::LAST_ACTIVITY . ' < ?), 0) d30,

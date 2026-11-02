@@ -9,6 +9,9 @@ class Tenant extends Model
 {
     use SoftDeletes;
 
+    /** Aktivitas terakhir = transaksi terakhir; bila belum pernah transaksi, pakai tanggal daftar. */
+    public const LAST_ACTIVITY_SQL = 'COALESCE((SELECT MAX(s.transaction_date) FROM sales s WHERE s.tenant_id = tenants.id), tenants.created_at)';
+
     protected $fillable = [
         'business_name',
         'business_type',

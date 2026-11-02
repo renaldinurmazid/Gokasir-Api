@@ -81,7 +81,14 @@ class PlatformStats
         ];
     }
 
-    /** Tenant baru, aktif, tidak aktif, suspended. */
+    /**
+     * Kesehatan tenant — empat kelompok yang saling lepas dan jumlahnya = total:
+     *  - suspended : status suspended
+     *  - active    : ada transaksi dalam N hari terakhir
+     *  - inactive  : tanpa transaksi N hari DAN sudah terdaftar lebih dari N hari (target retensi)
+     *  - fresh     : terdaftar < N hari yang lalu dan belum bertransaksi
+     * Definisi `inactive` sama persis dengan halaman Retensi (ambang 30 hari).
+     */
     private function tenantHealth(): array
     {
         $activeDays = (int) config('admin.active_days', 30);
@@ -97,15 +104,28 @@ class PlatformStats
                     ->where('sales.transaction_date', '>=', $cutoff);
             })
             ->count();
+        $inactive = Tenant::merchants()
+            ->where('status', '!=', 'suspended')
+            ->whereRaw(Tenant::LAST_ACTIVITY_SQL . ' < ?', [$cutoff])
+            ->count();
 
         return [
             'active_days' => $activeDays,
             'total'       => $total,
             'new_30d'     => Tenant::merchants()->where('created_at', '>=', $this->toApp($this->now->subDays(30)))->count(),
             'active'      => $active,
-            'inactive'    => max(0, $total - $active - $suspended),
+            'inactive'    => $inactive,
             'suspended'   => $suspended,
+            'fresh'       => max(0, $total - $active - $inactive - $suspended),
         ];
+    }
+
+    /** Angka kecil untuk badge sidebar (di-cache oleh pemanggil). */
+    public function navCounts(): array
+    {
+        $h = $this->tenantHealth();
+
+        return ['tenants' => $h['total'], 'inactive' => $h['inactive']];
     }
 
     // ── Transaksi & omzet ────────────────────────────────────────────────

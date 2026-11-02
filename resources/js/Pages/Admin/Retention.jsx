@@ -30,7 +30,7 @@ export default function Retention({ tenants, days, q: initialQ, buckets, never_s
       <Head title="Tenant Tidak Aktif" />
       <PageHeader
         title="Tenant Tidak Aktif"
-        description="Tenant aktif yang lama tidak bertransaksi — target follow-up dan retensi. Tenant yang belum pernah bertransaksi dihitung sejak tanggal daftar."
+        description="Tenant (selain yang di-suspend) yang lama tidak bertransaksi — target follow-up dan retensi. Tenant yang belum pernah bertransaksi dihitung sejak tanggal daftar."
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
