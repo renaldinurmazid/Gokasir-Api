@@ -21,6 +21,12 @@ class HandleInertiaRequests extends Middleware
      *
      * @see https://inertiajs.com/asset-versioning
      */
+    /** Area /admin memakai root view terpisah (bundle & CSS sendiri). */
+    public function rootView(Request $request): string
+    {
+        return $request->is('admin', 'admin/*') ? 'admin' : $this->rootView;
+    }
+
     public function version(Request $request): ?string
     {
         return parent::version($request);
@@ -37,7 +43,14 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            //
+            'auth' => fn () => ['admin' => ($a = $request->user('admin')) ? [
+                'id' => $a->id, 'name' => $a->name, 'email' => $a->email,
+            ] : null],
+            'flash' => fn () => [
+                'success'       => $request->session()->get('success'),
+                'error'         => $request->session()->get('error'),
+                'impersonation' => $request->session()->get('impersonation'),
+            ],
         ];
     }
 }

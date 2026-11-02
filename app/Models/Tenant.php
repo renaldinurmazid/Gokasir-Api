@@ -53,6 +53,36 @@ class Tenant extends Model
         return $this->hasMany(User::class);
     }
 
+    public function owner()
+    {
+        return $this->hasOne(User::class)->where('role', 'owner')->orderBy('id');
+    }
+
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
+    public function sales()
+    {
+        return $this->hasMany(Sale::class);
+    }
+
+    /**
+     * Hanya tenant "merchant" (pelanggan SaaS sungguhan).
+     * Saat mendaftar sebagai sales, sistem membuat tenant pembungkus untuk akun
+     * sales tersebut — itu bukan pelanggan, jadi dikeluarkan dari statistik admin.
+     */
+    public function scopeMerchants($query)
+    {
+        return $query->whereNotExists(function ($q) {
+            $q->selectRaw('1')
+                ->from('users')
+                ->whereColumn('users.tenant_id', 'tenants.id')
+                ->where('users.role', 'sales');
+        });
+    }
+
     public function taxSetting()
     {
         return $this->hasOne(TaxSetting::class);
